@@ -14,7 +14,7 @@ from pymeasure.instruments.keithley.keithley2600 import Channel as Keithley2600_
 from pymeasure.instruments.oxfordinstruments import ITC503, IPS120_10
 
 ### Own files
-from src import WindowSingleDock, DeviceProcedure, Device, make_resourcemanager, DESCRIPTOR, ADAPTER_TYPE
+from equipment_control import WindowSingleDock, DeviceProcedure, Device, make_resourcemanager, DESCRIPTOR, ADAPTER_TYPE
 
 class BlueOxfordCryo_MagnetControl(DeviceProcedure):
     """This procedure controls the Keithley 2636A Sourcemeter. 2- and 4-probe measurement are possible, with the 4-probe needing an optional voltmeter (procedure is tested with the Agilent 34420A but any SCPI '*read' capable voltmeter should work) and 'Use Voltmeter' set as True.\n

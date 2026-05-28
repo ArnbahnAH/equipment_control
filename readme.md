@@ -3,17 +3,36 @@
 #### A custom backed for communicating with devices which incorporates support for the AR488 adapter. Based on the pymeasure <em>Procedure</em> and <em>ManagedWindowBase</em> with additional GUI elements allowing for device selection and forwarding to a <em>Procedure</em>.
 
 ### Installation
-Python 3.12.3 + requirements.txt (i.e. PySide6 + pyvisa + pymeasure)
+Install the VISA drivers (see instructions in `gpib-installation`).<br>
+Install Python 3.12.3 or newer (`$ python` or `$ python3` in the console).
+- Check the version with `$ python3 -V`
+- If the version is incorrect then use the path to the executable (where you installed python)
+- Ideally make a virtual environment with `$ python3 -m venv *name of the environment*`
+- Activate the environment with:
+  1. Linux: `$ source *name of the environment*/bin/activate`
+  2. Windows: `$ *name of the environment*\Scripts\Activate.ps1` you might need to allow scripts to run for this `$ Set-ExecutionPolicy Unrestricted -Scope Process`
+- Update pip with `$ python3 -m pip install --upgrade pip`
 
-### Permissions
-- Ensure you have permission to access serial ports on your operating system
-- Ensure that you can open the virtual environment (Windows: set security to unrestricted for the process)
-- Ensure that libxcb-cursor0 is installed (linux)
+Installing the project with measurement procedures:
+- clone the repo with `$ git clone https://github.com/aghuth/equipment_control`
+- enter the downloaded folder
+- build the project with `$ python3 -m build`
+- install the project with `$ python3 -m pip install ./`
+
+To install only the project: `$ python3 -m pip install git+https://github.com/aghuth/equipment_control`.
+
+Ensure you have the rights to access serial ports on your operating system.<br>
+On linux ensure that libxcb-cursor0 is installed.
 
 ### How to use
-- Write a procedure like you would with a pymeasure 'Procedure' but use the 'DeviceProcedure' class, there you can select 'requested_devices' and receive 'provided_devices' and 'visa_path'.
-- In the procedure create a pymeasure adapter via the Device class for each instrument providing the information from its entry in 'provided_devices' and use the Device.adapter for communication and to create pymeasure instruments. This allows for a seamless usage of pyvisas 'GPIB' and serial ('RS232') adapters and the 'AR488' which is not supported by pyvisa.
-- Use a window based on the DeviceManagerWindow like a pymeasure 'ManagedWindowBase', like the ones from the window.py
+This projects measurement routines are based on pymeasure's procedures. To write a measurement do as described in their documentation https://pymeasure.readthedocs.io/en/latest/tutorial/procedure.html#using-procedures, <strong>BUT</strong> to use this projects benefits replace the following:
+- `Procedure` --> `DeviceProcedure` for the measurement procedure
+- `ManagedWindowBase` --> `DeviceManagerWindow` for the GUI class (existing ones are in `windows.py`)
+- `inputs` and `displays` are now defined inside the procedure!
+- DeviceProcedures can request devices with `request_devices` and give default devices as `default_devices` to the GUI
+- DeviceProcedures can ask a DeviceManagerWindow to show tool-tips for parameters with the `tool_tip_information` dict
+
+For an example on how to use the features of this project follow the example in `example.py` or take a look at the real procedures below.
 
 ### Example procedures
 - #### Nova_SEM_IV.py
@@ -21,6 +40,7 @@ Python 3.12.3 + requirements.txt (i.e. PySide6 + pyvisa + pymeasure)
 - #### Blue_Oxford_Kryo_control.py
     <p>Procedure to measure current-voltage characteristics and control the magnet for the blue oxford cryostat. Possible are 2-probe and 4-probe U(I), I(U) and their magnetic field dependence. Reading the temperature is also implemented allowing for a U(T) measurement.</p>
 
+### Contents
 device.py
 ------------------------------------------------------------
 <p><strong><em>DESCRIPTOR, ADAPTER_TYPE, GPIB_ADDRESS and IDENTIFICATION</strong></em><br>
@@ -59,7 +79,7 @@ A simple PyQt widget that allows for the input of a custom VISA path, can be rea
 A PyQt widget that allows a user to select an instrument based on a selection of adapter types and a pyvisa descriptor. If connected devices are known they can be displayed by unselecting the checkbox, then a list of known descriptors is presented. Selecting a descriptor and adapter type in the latter mode will also display an information string. Information can be returned with 'get_selected_device' as a dictionary of the above mentioned magic variables.</p>
 
 <p><strong><em>HelpWindow</strong></em><br>
-A simple PyQt window that shows the docstring of a procedure as a text. Also allows to set the 'debug' flag.</p>
+A simple PyQt window that shows the docstring of a procedure as a text.</p>
 
 <p><strong><em>DeviceControlWindow</strong></em><br>
 A PyQt window that presents a list of DeviceManagerWidgets for each device in the procedures 'requested_devices' list. Also shown is a VISAPathManagerWidget and two buttons one for finding devices using 'find_devices' and one for resetting devices using 'reset_all_connected_devices'.</p>
@@ -81,6 +101,7 @@ A class that allows for easier usage of an AR488 adapter. Most commands are impl
 A custom version of the pyvisa 'VISAAdapter' for the AR488 that behaves similarly to a GPIB or serial adapter with 'write' and 'read' being overwritten to allow for the usage of the AR488 in controller and device mode.</p>
 
 ### Known Issues
+- Oxford Instruments devices do not work on linux-gpib with pyvisa, at least with the scripts provided here! No issues with windows.
 - PySide6 throws an error when closing a window that has an estimator widget, says that "QThread: Destroyed while thread 'Estimator-Thread (cant be closed properly with PySide6)' is still running". Is not an issue for measurements.
 - The pymeasure dock widget (and plot widget) implementation with qtgraph sometimes fails to render a measurement with a numpy error hinting at failing to convert a datapoint to a meaningful value, the entire application has to be restarted to solve this issue. This is purely a rendering problem and does not affect any running measurement, simply re-open the measurement when it is finished with a freshly started GUI. Parameters can then be re-applied for the next measurement.
 - OpenGL has issues on updating a pymeasure plot, also hinting at the painter, crashes on measurements. Can be avoided by not using OpenGL.

@@ -28,8 +28,8 @@ from pymeasure.display.widgets import (
 from pymeasure.experiment import Parameter, ListParameter, BooleanParameter
 from pymeasure.experiment import Procedure, Results, unique_filename
 # Own libraries
-from src import make_resourcemanager, DeviceManagerWindow, WindowSingleDock, DeviceProcedure
-from src.device import find_devices, DESCRIPTOR, ADAPTER_TYPE, GPIB_ADDRESS, IDENTIFICATION, DIALECT
+from equipment_control import make_resourcemanager, DeviceManagerWindow, WindowSingleDock, DeviceProcedure
+from equipment_control.device import find_devices, DESCRIPTOR, ADAPTER_TYPE, GPIB_ADDRESS, IDENTIFICATION, DIALECT
 from Nova_SEM_IV import NovaSEM_IV
 from Blue_Oxford_Kryo_control import BlueOxfordCryo_MagnetControl
 

@@ -1,57 +1,25 @@
-# equipment_control/
-# ├── src/
-# │   ├── __init__.py
-# │   ├── ar488.py
-# │   ├── device.py
-# │   ├── display.py
-# │   └── windows.py
-# ├── Nova_SEM_IV.py
-# ├── Blue_Oxford_Kryo_control.py
-# ├── requirements.txt
-# └── readme.md
+[build-system]
+requires = ["setuptools >= 40.8.0"]
 
 [project]
 name = "equipment_control"
 version = "2026.0.0"
-description = "Addition to pymeasure to support the AR488 adapters additionally to the GPIB and RS232 supported by pyvisa. Furthermore some pymeasure classes are extended to allow for selecting connected devices through a GUI, forwarding the information to the procedure class automatically, where a pymeasure adapter class can be created to communicate with the device. This allows a user to select devices for a measurement without having to modify the procedure code."
+description = "Addition to pymeasure to support the AR488 adapters and update their GUI to allow for procedures with no hardcoded devices."
 readme = "readme.md"
 requires-python = ">= 3.12.3"
 authors = [
     {name = "Arne Hof", email = "s2781209@stud.uni-frankfurt.de"},
 ]
 dependencies = [
-    "colorama==0.4.6",
-    "flexcache==0.3",
-    "flexparser==0.4",
-    "gpib-ctypes==0.3.0",
-    "ifaddr==0.2.0",
-    "numpy==2.4.2",
-    "pandas==2.3.3",
-    "Pint==0.25.2",
-    "platformdirs==4.9.2",
-    "psutil==7.2.2",
-    "PyMeasure==0.15.0",
-    "pyqtgraph==0.14.0",
-    "pyserial==3.5",
-    "PySide6==6.10.2",
-    "PySide6_Addons==6.10.2",
-    "PySide6_Essentials==6.10.2",
-    "python-dateutil==2.9.0.post0",
-    "pytz==2025.2",
-    "pyusb==1.3.1",
-    "PyVISA==1.16.1",
-    "PyVISA-py==0.8.1",
-    "shiboken6==6.10.2",
-    "six==1.17.0",
-    "typing_extensions==4.15.0",
-    "tzdata==2025.3",
-    "zeroconf==0.148.0",
+    "gpib-ctypes>=0.3.0",
+    "numpy>=2.4.2",
+    "PyMeasure>=0.15.0",
+    "PySide6>=6.10.2",
+    "PyVISA>=1.16.1",
+    "PyVISA-py>=0.8.1",
 ]
-# [tool.setuptools.packages.find]
-# where = [
-#     "src"
-# ]
+
 [tool.setuptools]
 packages = [
-  "src",
+  "equipment_control",
 ]

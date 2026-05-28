@@ -10,7 +10,7 @@ from pymeasure.instruments import Instrument
 from pymeasure.instruments.keithley.keithley2400 import Keithley2400
 
 ### Own files
-from src import WindowSingleDock, DESCRIPTOR, ADAPTER_TYPE, DeviceProcedure, Device, make_resourcemanager
+from equipment_control import WindowSingleDock, DESCRIPTOR, ADAPTER_TYPE, DeviceProcedure, Device, make_resourcemanager
 
 class NovaSEM_IV(DeviceProcedure):
     """This procedure controls the Keithley 2400 Sourcemeter. 2- and 4-probe measurement are possible, with the 4-probe needing an optional voltmeter (procedure is tested with the Agilent 34420A but any SCPI '*read' capable voltmeter should work) and 'Use Voltmeter' set as True.\n
