@@ -16,6 +16,7 @@ Install Python 3.12.3 or newer (`$ python` or `$ python3` in the console).
 Installing the project with measurement procedures:
 - clone the repo with `$ git clone https://github.com/aghuth/equipment_control`
 - enter the downloaded folder
+- install build tools `$ python3 -m pip install --upgrade build`
 - build the project with `$ python3 -m build`
 - install the project with `$ python3 -m pip install ./`
 
