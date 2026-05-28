@@ -33,7 +33,7 @@ class ExampleProcedure(DeviceProcedure):
         "show_parameter":"Shows something new", 
         "test_folding_parameter":"Only visible when Make 'Test int' appear is enabled"
     }   # now users know what the parameters do!
-    ### THATS IT! Now the DeviceManagerWindow will allow the user to specify these three devices, sould they differ from their default_devices entries
+    ### THATS IT! Now the DeviceManagerWindow will allow the user to specify this device, should they differ from their default_devices entries
 
     ### From here do as specified in the pymeasure documentation, like:
     show_parameter = BooleanParameter(name="Make 'Test int' appear", default=False)
@@ -114,6 +114,13 @@ class ExampleProcedure(DeviceProcedure):
         else:
             log.error("Instrument was not initiated correctly to be shut down!")
         return super().shutdown()
+    
+    #   allow to display estimates in the GUI window, unchanged from pymeasure
+    def get_estimates(self):
+        estimates = [
+            ("Some estimate", "%d s" % round(0.5*self.test_folding_parameter)),
+        ]
+        return estimates
 
 #   Now open the procedure on execution with a GUI of your choice, like the WindowSingleDock
 if __name__ == "__main__":
