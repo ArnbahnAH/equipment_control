@@ -198,12 +198,12 @@ class DeviceManagerWidget(QtWidgets.QWidget):
 
         # manual device selector
         manual_device_selection_layout.addWidget(QtWidgets.QLabel("M:"))
-        self.manual_device_selection_widget.setFixedWidth(15)
+        # self.manual_device_selection_widget.setFixedWidth(15)
         manual_device_selection_layout.addWidget(self.manual_device_selection_widget)
         manual_device_selection_layout.setContentsMargins(0, 4, 0, 0)
 
         adapter_type_layout.addWidget(QtWidgets.QLabel("Adapter:"))
-        self.adapter_type_widget.setFixedWidth(65)
+        # self.adapter_type_widget.setFixedWidth(65)
         adapter_type_layout.addWidget(self.adapter_type_widget)
         adapter_type_layout.setContentsMargins(0, 10, 0, 0)
 
@@ -386,8 +386,13 @@ class DeviceControlWindow(QtWidgets.QWidget):
         if hasattr(self.procedure_class, "requested_devices") and hasattr(self.procedure_class, "_possible_devices") and hasattr(self.procedure_class, "provided_devices"):
             self._provide_devices = True
             self.device_manager = []
-            for requested_index in range(0,len(self.procedure_class.requested_devices)):
-                self.device_manager.append(DeviceManagerWidget(parent=self, possible_devices=self.procedure_class._possible_devices, default_information=self.procedure_class.default_devices[requested_index]))  
+            if hasattr(self.procedure_class, "default_devices") and len(self.procedure_class.default_devices)==len(self.procedure_class.requested_devices):
+                for requested_index in range(0,len(self.procedure_class.requested_devices)):
+                    self.device_manager.append(DeviceManagerWidget(parent=self, possible_devices=self.procedure_class._possible_devices, default_information=self.procedure_class.default_devices[requested_index]))  
+            else:
+                log.debug("DeviceControlWindow:Procedure has not defined enough default devices.")
+                for requested_index in range(0,len(self.procedure_class.requested_devices)):
+                    self.device_manager.append(DeviceManagerWidget(parent=self, possible_devices=self.procedure_class._possible_devices))  
         else:
             log.error(f"DeviceControlWindow:Procedure class {self.procedure_class.__name__} is not a valid DeviceProcedure, could not provide any devices, please ensure that the procedure class has attributes 'requested_devices', '_possible_devices' and 'provided_devices'!")
         ###

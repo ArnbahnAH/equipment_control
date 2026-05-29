@@ -1406,21 +1406,21 @@ class AR488Adapter(VISAAdapter):
         
         answer = "Reading Error"
         reading_attempt = 0
-        successull = False
-        while not successull and reading_attempt < self.number_of_read_attempts:
+        successfull = False
+        while not successfull and reading_attempt < self.number_of_read_attempts:
             reading_attempt += 1
             try:
                 if self.auto_mode == 0:
                     answer = self.ar488.read(self.default_termination)
                 else:
                     answer = self.ar488.read_resource(**pyvisa_kwargs)
-                successull = True
+                successfull = True
             except Exception as error:
                 log.error(f"AR488Adapter:Reading data after command '{self._last_command}' at attempt {reading_attempt} failed due to an error: {error}")
                 warn(f"AR488Adapter:Reading data after command '{self._last_command}' at attempt {reading_attempt} failed due to an error: {error}")
                 if reading_attempt < self.number_of_read_attempts:
                     time.sleep(self.ar488.query_delay)
-        if not successull:
+        if not successfull:
             raise ValueError(f"AR488Adapter could not read from AR488 after {self.number_of_read_attempts} attempts!")
         else:
             return answer
