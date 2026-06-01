@@ -2,10 +2,6 @@
 # Main file
 """Main file for performing and accessing GUI based measurement with GPIB.\n
 Uses the `GPIBDeviceFinderGUI` to find connected devices using the `FindDevices` procedures and allows users to open a measurement window using the `ProcedureManagerWidget` with options provided by the `supported_procedures.SupportedProcedureList`.\n
-If you want to add your own procedure:\n
-\t  1. Ensure your procedure uses the `procedures.DeviceProcedure` class as a child and declares `inputs` and `displays`.\n
-\t  2. Make your own GUI or use one provided in `windows`. Ensure that the only explicit argument of the constructor is a `DeviceProcedure` parent class, i.e. your procedure from 1.\n
-\t  3. Use the `GPIBDeviceFinderGUI` to open GPIB devices or load a list of known devices through the GUI and then open the requested procedure, `GPIBDeviceFinderGUI` will then provide your procedure with a list of known devices according to the `DeviceProcedure` class.
 """
 # Standard libraries
 import sys, os, warnings, tempfile

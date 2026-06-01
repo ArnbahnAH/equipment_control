@@ -427,6 +427,7 @@ def analyse_port(thread_return_data:dict, thread_index:int, resource:str, manage
         
         if not found_right_dialect:
             log.warning(f"analyse_port:Device '{resource}' does not respond to any of these dialects: {list(ADAPTER_COMMUNICATION.keys())}!")
+            device_dialect  = "Not known"
 
         if successful:
             data = {

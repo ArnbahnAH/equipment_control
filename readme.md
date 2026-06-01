@@ -14,7 +14,7 @@ Install Python 3.12.3 or newer (`$ python` or `$ python3` in the console).
 - Update pip with `$ python3 -m pip install --upgrade pip`
 
 Installing the project with measurement procedures:
-- clone the repo with `$ git clone https://github.com/aghuth/equipment_control`
+- clone the repo with `$ git clone https://github.com/aghuth/equipment_control` or download the files
 - enter the downloaded folder
 - install build tools `$ python3 -m pip install --upgrade build`
 - build the project with `$ python3 -m build`
@@ -35,7 +35,7 @@ This projects measurement routines are based on pymeasure's procedures. To write
 
 For an example on how to use the features of this project follow the example in `example.py` or take a look at the real procedures below.
 
-### Example procedures
+### Procedures
 - #### Nova_SEM_IV.py
     <p>Procedure to measure current-voltage characteristics on the Nova SEM using the Keithley 2400 sourcementer and Agilent 34420A voltmeter. 2-probe and 4-probe are possible as well as measuring U(I) and I(U).</p>
 - #### Blue_Oxford_Kryo_control.py
@@ -91,7 +91,7 @@ An implementation of pymeasures 'ManagedWindowBase' that allows to show a Device
 windows.py:
 ------------------------------------------------------------
 <p><strong><em>WindowSingleDock</strong></em><br>
-A window based on the 'DeviceManagerWindow' with on dock widget (plot), log and table.</p>
+A window based on the 'DeviceManagerWindow' with one dock widget (plot), log and table.</p>
 
 ar488.py:
 ---------
