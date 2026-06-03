@@ -364,9 +364,9 @@ def find_devices(manager:pyvisa.ResourceManager, excluded:list[str]=["ttyS"], mu
                     possible_devices.append(data)
                     log.debug(f"{resource}: {data}")
                 else:
-                    log.warning(f"find_devices:Thread {index} could not find information about '{resource}' but connection is {info}. Might be a valid resource.")
+                    log.warning(f"find_devices:Could not find information about '{resource}' but connection is {info}. Might be a valid resource.")
             else:
-                log.info(f"find_devices:Thread {index} skipped '{resource}', connection is {info}")
+                log.info(f"find_devices:Skipped '{resource}', connection is {info}")
 
     ### Multithreading
     else:
