@@ -363,6 +363,7 @@ class DeviceControlWindow(QtWidgets.QWidget):
     - Selecting devices through the `DeviceManagerWidget` for each requested device by the procedure.
     """
     _provide_devices = False
+    multithreading = False
     def __init__(self, parent, procedure_class:DeviceProcedure, procedure_title:str):
         QtWidgets.QWidget.__init__(self)
         self.setWindowTitle(procedure_title)
@@ -372,6 +373,9 @@ class DeviceControlWindow(QtWidgets.QWidget):
 
     def _setup_ui(self):
         log = logging.getLogger()
+        #   Button to enable multithreaded device search
+        self.fast_search_button = QtWidgets.QCheckBox('Parallel search', self)
+        self.fast_search_button.setToolTip("Use multithreading to scan independent adapters faster, can cause issues when multiple devices are connected over the same bus.")
         #   Button to find devices
         self.probe_device_button = QtWidgets.QPushButton('Find devices', self)
         self.probe_device_button.clicked.connect(self._probe_devices)
@@ -408,6 +412,7 @@ class DeviceControlWindow(QtWidgets.QWidget):
             if self._provide_devices: 
                 info_probe_devices_hbox.addWidget(self.probe_device_button)
                 info_probe_devices_hbox.addWidget(self.reset_device_button)
+                info_probe_devices_hbox.addWidget(self.fast_search_button)
             info_probe_devices_hbox.addStretch()
             button_box.setLayout(info_probe_devices_hbox)
             button_box.setFixedHeight(36)
@@ -441,7 +446,7 @@ class DeviceControlWindow(QtWidgets.QWidget):
     def _probe_devices_internal(self):
         log = logging.getLogger()
         manager = make_resourcemanager(self.visa_manager.get_visa_path())
-        self.procedure_class._possible_devices = find_devices(manager=manager, multithreading=False)
+        self.procedure_class._possible_devices = find_devices(manager=manager, multithreading=self.manual_device_selection_widget.isChecked())
         log.info("DeviceControlWindow:Finished searching for devices...")
         self._update_device_manager_widgets()
 
@@ -462,7 +467,7 @@ class DeviceControlWindow(QtWidgets.QWidget):
     
     def _reset_devices_internal(self):
         manager = make_resourcemanager(custom_visalib_path=self.visa_manager.get_visa_path())
-        reset_all_connected_devices(manager=manager, multithreading=False)
+        reset_all_connected_devices(manager=manager, multithreading=self.manual_device_selection_widget.isChecked())
         log = logging.getLogger()
         log.info("DeviceControlWindow:Finished resetting devices...")
 
