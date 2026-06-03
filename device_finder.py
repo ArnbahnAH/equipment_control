@@ -32,6 +32,8 @@ from equipment_control import make_resourcemanager, DeviceManagerWindow, WindowS
 from equipment_control.device import find_devices, DESCRIPTOR, ADAPTER_TYPE, GPIB_ADDRESS, IDENTIFICATION, DIALECT
 from Nova_SEM_IV import NovaSEM_IV
 from Blue_Oxford_Kryo_control import BlueOxfordCryo_MagnetControl
+from I_von_t_dep import I_von_t
+from white_cryo_UvB import WhiteCryoUvB
 
 ### Manage supported procedures
 class SupportedProcedure:
@@ -59,6 +61,8 @@ class SupportedProcedure:
 SupportedProcedureList : list = [
     SupportedProcedure(NovaSEM_IV, WindowSingleDock),
     SupportedProcedure(BlueOxfordCryo_MagnetControl, WindowSingleDock),
+    SupportedProcedure(I_von_t, WindowSingleDock),
+    SupportedProcedure(WhiteCryoUvB, WindowSingleDock),
 ]
 
 ### Procedure Manager
@@ -438,8 +442,10 @@ class GPIBDeviceFinderGUI(ManagedWindowBase):
         else:
             log.info(f"GPIBDeviceFinderGUI:Could not find any known devices, please search for devices first or use manual input.")
         return raw_device_data
-    
-if __name__ == "__main__":
+
+
+# will be run by projects.script
+def main():
     # try:
     #     pyqtgraph.setConfigOption("useOpenGL", True)
     # except Exception as error:
@@ -448,3 +454,6 @@ if __name__ == "__main__":
     window = GPIBDeviceFinderGUI()
     window.show()
     app.exec()
+    
+if __name__ == "__main__":
+    main()

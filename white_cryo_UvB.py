@@ -5,13 +5,13 @@ from time import sleep
 import numpy as np
 from pymeasure.adapters import VISAAdapter
 from pymeasure.experiment import Metadata, IntegerParameter, FloatParameter, Parameter, ListParameter, BooleanParameter, Results
+from pymeasure.instruments import Instrument
 from pymeasure.instruments.keithley import Keithley2600
 from pymeasure.instruments.agilent import Agilent34410A
 
-from ..device import Device, make_resourcemanager
-from ..deviceprocedure import DeviceProcedure
-from ..export import export
-from ..windows import MultiDockArg, WindowMultiDock
+#from ..export import export
+#from ..windows import MultiDockArg, WindowMultiDock
+from equipment_control import WindowSingleDock, DeviceProcedure, Device, make_resourcemanager, DESCRIPTOR, ADAPTER_TYPE
 
 
 logging.basicConfig(
@@ -37,30 +37,30 @@ _DATA_COLUMNS = [
 log = logging.getLogger(__name__)
 
 
-_multiDockargs = [
-   MultiDockArg(
-       name="U(B)-Kurve, Sourcemeter",
-       x_axis_label=_DATA_COLUMNS[0], # note this has to match with DATA_COLUMNS otherwise it breaks
-       y_axis_label=_DATA_COLUMNS[1],
-   ) ,
-   MultiDockArg(
-       name="T3(B)-Kurve, Temperaturstabilität",
-       x_axis_label=_DATA_COLUMNS[0],
-       y_axis_label=_DATA_COLUMNS[7],
-   ) ,
-   MultiDockArg(
-       name="U(B)-Kurve, Nanovoltmeter, Channel 1",
-       x_axis_label=_DATA_COLUMNS[0],
-       y_axis_label=_DATA_COLUMNS[3],
-   ) ,
-   MultiDockArg(
-       name="U(B)-Kurve, Nanovoltmeter, Channel 2",
-       x_axis_label=_DATA_COLUMNS[0],
-       y_axis_label=_DATA_COLUMNS[4],
-   ) ,
-
-]
-@export(inner=WindowMultiDock, multiarg=_multiDockargs)
+#_multiDockargs = [
+#   MultiDockArg(
+#       name="U(B)-Kurve, Sourcemeter",
+#       x_axis_label=_DATA_COLUMNS[0], # note this has to match with DATA_COLUMNS otherwise it breaks
+#       y_axis_label=_DATA_COLUMNS[1],
+#   ) ,
+#   MultiDockArg(
+#       name="T3(B)-Kurve, Temperaturstabilität",
+#       x_axis_label=_DATA_COLUMNS[0],
+#       y_axis_label=_DATA_COLUMNS[7],
+#   ) ,
+#   MultiDockArg(
+#       name="U(B)-Kurve, Nanovoltmeter, Channel 1",
+#       x_axis_label=_DATA_COLUMNS[0],
+#       y_axis_label=_DATA_COLUMNS[3],
+#   ) ,
+#   MultiDockArg(
+#       name="U(B)-Kurve, Nanovoltmeter, Channel 2",
+#       x_axis_label=_DATA_COLUMNS[0],
+#       y_axis_label=_DATA_COLUMNS[4],
+#   ) ,
+#
+#]
+#@export(inner=WindowMultiDock, multiarg=_multiDockargs)
 class WhiteCryoUvB(DeviceProcedure):
     """
     white cryo current driven magnetic field measurment.
@@ -111,15 +111,18 @@ class WhiteCryoUvB(DeviceProcedure):
     DATA_COLUMNS = _DATA_COLUMNS
 
     #TODO which keithley is there? I think keithley2600?
-    ls340 : Device
-    keithley2600 : Device # pymeasure support? maybe just use pure commands
-    agilent34420a : Device # pymeasure support?
-    magnet: Device
-    file_avg = None
+    ls340 : Instrument
+    keithley2600 : Instrument # pymeasure support? maybe just use pure commands
+    agilent34420a : Instrument # pymeasure support?
+    magnet: Instrument
 
     keithley2600_connected = False
+    ls340_connected = False
+    agilent34420a_connected = False
+    magnet_connected = False
+
+    file_avg = None
     _data_to_measure = []
-    _delay = 0.01
 
     time_nvSwitch = 0.02
     time_magnet = 0.5
@@ -142,27 +145,31 @@ class WhiteCryoUvB(DeviceProcedure):
 
             def make_instrument(index, cls):
                 """helper to connect instrument
-                index: the respective index of the provided devices.
+                index: the respective index of the self.provided_devices.
                 cls:the measurement class
                 """
                 info = self.provided_devices[index]
                 descriptor = info["Descriptor"]
                 adapter_type = info["Adapter Type"]
-                generic_instrument = Device(descriptor=descriptor,
-                                          manager=manager,
-                                          adapter_type=adapter_type)
-                connected = generic_instrument.successfully_connected
-                log.info(f"{cls} connected: {connected}")
-                device = generic_instrument
-                #device = cls(adapter=generic_instrument.adapter)
+                connected = False
+                try:
+                    generic_instrument = Device(descriptor=descriptor,
+                                            manager=manager,
+                                            adapter_type=adapter_type)
+                    connected = generic_instrument.successfully_connected
+                    log.info(f"{cls} connected: {connected}")
+                    device = cls(adapter=generic_instrument.adapter)
+                except Exception as e:
+                    print("Error:", e)
+                    device = None
                 return connected, device
 
-            self.ls340_connected, self.ls340 = make_instrument(0, Device)
-            self.keithley2600_connected, self.keithley2600 = make_instrument(1, Device)
+            self.ls340_connected, self.ls340 = make_instrument(0, Instrument)
+            self.keithley2600_connected, self.keithley2600 = make_instrument(1, Instrument)
             self.agilent34420a_connected = False
             if self.measurement_mode in ["Four", "Four+Ch2"]:
-                self.agilent34420a_connected, self.agilent34420a = make_instrument(2, Device)
-            self.magnet_connected, self.magnet = make_instrument(3, Device)
+                self.agilent34420a_connected, self.agilent34420a = make_instrument(2, Instrument)
+            self.magnet_connected, self.magnet = make_instrument(3, Instrument)
 
         else:
             log.error(f"No devices provided, shutting down!")
@@ -178,36 +185,36 @@ class WhiteCryoUvB(DeviceProcedure):
             probe_current = self.probe_current*1E-6 # A
             voltage_limit = self.voltage_limit_mV*1E-3  # V
 
-            self.keithley2600.instrument.write("smua.reset()")
-            self.keithley2600.instrument.write("smua.source.func = smua.OUTPUT_DCAMPS") # current mode
-            self.keithley2600.instrument.write("smua.source.leveli = 0.0")
-            self.keithley2600.instrument.write("smua.source.autorangei = smua.AUTORANGE_ON")
-            self.keithley2600.instrument.write(f"smua.source.limitv = {voltage_limit}")
-            self.keithley2600.instrument.write(f"smua.source.leveli = {probe_current}")
-            self.keithley2600.instrument.write("smua.measure.autorangev = smua.AUTORANGE_ON")
-            self.keithley2600.instrument.write(f"smua.measure.nplc = {self.nplc}")
-            self.keithley2600.instrument.write("display.smua.measure.func = display.MEASURE_DCVOLTS")
-            self.keithley2600.instrument.write("smua.source.output = smua.OUTPUT_OFF")
+            self.keithley2600.write("smua.reset()")
+            self.keithley2600.write("smua.source.func = smua.OUTPUT_DCAMPS") # current mode
+            self.keithley2600.write("smua.source.leveli = 0.0")
+            self.keithley2600.write("smua.source.autorangei = smua.AUTORANGE_ON")
+            self.keithley2600.write(f"smua.source.limitv = {voltage_limit}")
+            self.keithley2600.write(f"smua.source.leveli = {probe_current}")
+            self.keithley2600.write("smua.measure.autorangev = smua.AUTORANGE_ON")
+            self.keithley2600.write(f"smua.measure.nplc = {self.nplc}")
+            self.keithley2600.write("display.smua.measure.func = display.MEASURE_DCVOLTS")
+            self.keithley2600.write("smua.source.output = smua.OUTPUT_OFF")
 
             if self.sourcemeter_rs:
-                self.keithley2600.instrument.write("smua.sense = smua.SENSE_REMOTE")
+                self.keithley2600.write("smua.sense = smua.SENSE_REMOTE")
             else:
-                self.keithley2600.instrument.write("smua.sense = smua.SENSE_LOCAL")
+                self.keithley2600.write("smua.sense = smua.SENSE_LOCAL")
 
             if self.measurement_mode in ["Four", "Four+Ch2"]:
                 if self.agilent34420a_connected:
-                    self.agilent34420a.instrument.write('*RST')
-                    self.agilent34420a.instrument.write(':sense:function "voltage"')
-                    self.agilent34420a.instrument.write(":sense:voltage:RANGe:AUTO ON")
-                    self.agilent34420a.instrument.write(f":sense:voltage:NPLCycles {self.nplc}")
-                    self.agilent34420a.instrument.write(":trigger:source bus")
+                    self.agilent34420a.write('*RST')
+                    self.agilent34420a.write(':sense:function "voltage"')
+                    self.agilent34420a.write(":sense:voltage:RANGe:AUTO ON")
+                    self.agilent34420a.write(f":sense:voltage:NPLCycles {self.nplc}")
+                    self.agilent34420a.write(":trigger:source bus")
 
 
             # magnet stuff
-            self.magnet.instrument.read_termination = "\r\n" # TODO figure this out probably run some tests first before you run this class
-            self.magnet.instrument.write_termination = "\r\n" # TODO figure this out probably run some tests first before you run this class
-            self.magnet.instrument.write("T0")
-            self.magnet.instrument.write("P1")
+            self.magnet.read_termination = "\r\n" # TODO figure this out probably run some tests first before you run this class
+            self.magnet.write_termination = "\r\n" # TODO figure this out probably run some tests first before you run this class
+            self.magnet.write("T0")
+            self.magnet.write("P1")
 
             """ New value by Alfons and Michael """
             BRate = 0.02  # T/s, max: 0.05
@@ -253,10 +260,10 @@ class WhiteCryoUvB(DeviceProcedure):
             # TODO roland mixes try: expect: and read/ask why?
             #idn = self.keithley2600.ask("*IDN?")
             #assert(idn != "")
-            self.ls340.instrument.clear()
+            self.ls340.clear()
             temp_1, temp_2, temp_3 = self.read_temp()
             time_start = time.time()
-            self.keithley2600.instrument.write("smua.source.output = smua.OUTPUT_ON")
+            self.keithley2600.write("smua.source.output = smua.OUTPUT_ON")
 
 
             for i in range(0, self.B_steps+1):
@@ -273,18 +280,18 @@ class WhiteCryoUvB(DeviceProcedure):
                 if not self.measure_cylce(i):
                         break
             pass
-            self.keithley2600.instrument.write("smua.source.leveli = 0.0")
-            self.keithley2600.instrument.write("smua.source.output = smua.OUTPUT_OFF")
-            self.keithley2600.instrument.write("smua.source.offmode = smua.OUTPUT_HIGH_Z")
+            self.keithley2600.write("smua.source.leveli = 0.0")
+            self.keithley2600.write("smua.source.output = smua.OUTPUT_OFF")
+            self.keithley2600.write("smua.source.offmode = smua.OUTPUT_HIGH_Z")
         return
 
     def read_temp(self):
-        self.ls340.instrument.write("KRDG?A")
-        temp_1 = self.ls340.instrument.read().split("\r")[0]#TODO check this
-        self.ls340.instrument.write("KRDG?B")
-        temp_2 = self.ls340.instrument.read().split("\r")[0]#TODO check this
-        self.ls340.instrument.write("KRDG?C")
-        temp_3 = self.ls340.instrument.read().split("\r")[0]#TODO check this
+        self.ls340.write("KRDG?A")
+        temp_1 = self.ls340.read().split("\r")[0]#TODO check this
+        self.ls340.write("KRDG?B")
+        temp_2 = self.ls340.read().split("\r")[0]#TODO check this
+        self.ls340.write("KRDG?C")
+        temp_3 = self.ls340.read().split("\r")[0]#TODO check this
         return temp_1, temp_2, temp_3
 
     def measure_cylce(self, i:int ) -> bool:
@@ -320,46 +327,46 @@ class WhiteCryoUvB(DeviceProcedure):
                 return False
 
             if self.measurement_mode in ["Four", "Four+Ch2"]:
-                self.agilent34420a.instrument.write(":route:terminals front1")
-            self.keithley2600.instrument.write("ireading, vreading = smua.measure.iv()")
+                self.agilent34420a.write(":route:terminals front1")
+            self.keithley2600.write("ireading, vreading = smua.measure.iv()")
             if self.measurement_mode in ["Four", "Four+Ch2"]:
-                self.agilent34420a.instrument.write(":initiate")
-                self.agilent34420a.instrument.write("*TRG")
-            #self.ls340.instrument.clear()
+                self.agilent34420a.write(":initiate")
+                self.agilent34420a.write("*TRG")
+            #self.ls340.clear()
             temp_1, temp_2, temp_3 = self.read_temp()
             values_nvMeter_1 = float('nan')
             values_nvMeter_2 = float('nan')
-            values = self.keithley2600.instrument.ask("printnumber(vreading,ireading)").split(",")
+            values = self.keithley2600.ask("printnumber(vreading,ireading)").split(",")
             if self.measurement_mode in ["Four", "Four+Ch2"]:
-                values_nvMeter_1 =  self.agilent34420a.instrument.ask(":fetch?")
+                values_nvMeter_1 =  self.agilent34420a.ask(":fetch?")
                 if self.measurement_mode in ["Four+Ch2"]:
-                    self.agilent34420a.instrument.write(":route:terminals front2")
+                    self.agilent34420a.write(":route:terminals front2")
                     time.sleep(self.time_nvSwitch)
-                    self.agilent34420a.instrument.write(":initiate")
-                    self.agilent34420a.instrument.write("*TRG")
+                    self.agilent34420a.write(":initiate")
+                    self.agilent34420a.write("*TRG")
                     time.sleep(float(self.nplc)*0.02)
-                    values_nvMeter_2 = self.agilent34420a.instrument.ask(":fetch?")
-                    self.agilent34420a.instrument.write(":route:terminals front1")
+                    values_nvMeter_2 = self.agilent34420a.ask(":fetch?")
+                    self.agilent34420a.write(":route:terminals front1")
             if self.remove_emf:
-                #self.keithley2600.instrument.write("printnumber(vreading,ireading)")
-                self.keithley2600.instrument.write(f"smua.source.leveli = {-1*probe_current}")
-                self.keithley2600.instrument.write("ireading, vreading = smua.measure.iv()")
+                #self.keithley2600.write("printnumber(vreading,ireading)")
+                self.keithley2600.write(f"smua.source.leveli = {-1*probe_current}")
+                self.keithley2600.write("ireading, vreading = smua.measure.iv()")
                 if self.measurement_mode in ["Four", "Four+Ch2"]:
-                    self.agilent34420a.instrument.write(":initiate")
-                    self.agilent34420a.instrument.write("*TRG")
-                values_emf = self.keithley2600.instrument.ask("printnumber(vreading,ireading)").split(",")
+                    self.agilent34420a.write(":initiate")
+                    self.agilent34420a.write("*TRG")
+                values_emf = self.keithley2600.ask("printnumber(vreading,ireading)").split(",")
                 if self.measurement_mode in ["Four", "Four+Ch2"]:
-                    values_nvMeter_emf_1 = self.agilent34420a.instrument.write(":fetch?")
+                    values_nvMeter_emf_1 = self.agilent34420a.write(":fetch?")
                     if self.measurement_mode in ["Four+Ch2"]:
-                        self.agilent34420a.instrument.write(":route:terminals front2")
+                        self.agilent34420a.write(":route:terminals front2")
                         time.sleep(self.time_nvSwitch)
-                        self.agilent34420a.instrument.write(":initiate")
-                        self.agilent34420a.instrument.write("*TRG")
-                        values_nvMeter_emf_2 = self.agilent34420a.instrument.ask(":fetch?")
-                        self.agilent34420a.instrument.write(":route:terminals front1")
+                        self.agilent34420a.write(":initiate")
+                        self.agilent34420a.write("*TRG")
+                        values_nvMeter_emf_2 = self.agilent34420a.ask(":fetch?")
+                        self.agilent34420a.write(":route:terminals front1")
                         values_nvMeter_2 = str((float(values_nvMeter_2)+(-1)*float(values_nvMeter_emf_2))/2.0)
                     values_nvMeter_1 = str((float(values_nvMeter_1)+(-1)*float(values_nvMeter_emf_1))/2.0)
-                self.keithley2600.instrument.write(f"smua.source.leveli = {probe_current}")
+                self.keithley2600.write(f"smua.source.leveli = {probe_current}")
                 values[0] = str((float(values[0])+(-1)*float(values_emf[0]))/2.0)
                 values[1] = str((float(values[1])+(-1)*float(values_emf[1]))/2.0)
             data = f"B={float(B_value):.3e}T | T={temp_3:.2f}K | U={float(values[0]):.2e}V"
@@ -408,32 +415,32 @@ class WhiteCryoUvB(DeviceProcedure):
     def set_B(self, BSet):
 
         log.info(f"set B field: {BSet}")
-        self.magnet.instrument.write("G")
-        IMagnet = float(self.magnet.instrument.read()[1:9])
+        self.magnet.write("G")
+        IMagnet = float(self.magnet.read()[1:9])
         log.info(f"IMagnet: {IMagnet}")
         if float(IMagnet) * float (BSet) < 0:    #if actual current has different sign than BSet: ramp field first to zero
-            self.magnet.instrument.write("P1")    #pause
+            self.magnet.write("P1")    #pause
             time.sleep(self.SleepTimeMagnet)
             #gpib.write(self.magnet, "U000.000") # 0.0 Tesla
-            self.magnet.instrument.write("U000.000") # 0.0 Tesla #TODO Roland did not add \r\n here?
+            self.magnet.write("U000.000") # 0.0 Tesla #TODO Roland did not add \r\n here?
             time.sleep(self.SleepTimeMagnet)
-            self.magnet.instrument.write("R2") # Go to Upper Set Point
+            self.magnet.write("R2") # Go to Upper Set Point
             time.sleep(self.SleepTimeMagnet)
-            self.magnet.instrument.write("P0")    #no pause
+            self.magnet.write("P0")    #no pause
             time.sleep(self.SleepTimeMagnet)
             self.stabelizeB()
             while True:
                 time.sleep(self.SleepTimeMagnet)
-                self.magnet.instrument.write("G")    #ask for output parameters
-                IMagnet = float(self.magnet.instrument.read()[1:9])
+                self.magnet.write("G")    #ask for output parameters
+                IMagnet = float(self.magnet.read()[1:9])
                 if IMagnet == 0 or self.should_stop() == False:
                     break
-        self.magnet.instrument.write("P1")    #pause
+        self.magnet.write("P1")    #pause
         time.sleep(self.SleepTimeMagnet)
         if BSet >= 0:
-            self.magnet.instrument.write("D0")    #change sign to plus
+            self.magnet.write("D0")    #change sign to plus
         else:
-            self.magnet.instrument.write("D1")    #change sign to minus
+            self.magnet.write("D1")    #change sign to minus
 
         time.sleep(self.SleepTimeMagnet)
         ISet = BSet * self.AmpsPerTesla
@@ -446,16 +453,16 @@ class WhiteCryoUvB(DeviceProcedure):
             ISetCommand = "0" + ISetCommand
         while len(ISetCommand) < 7:
             ISetCommand = ISetCommand + "0"
-        self.magnet.instrument.write("U" + ISetCommand) # set new current # TODO again no \r\n
+        self.magnet.write("U" + ISetCommand) # set new current # TODO again no \r\n
         time.sleep(self.SleepTimeMagnet)
-        self.magnet.instrument.write("R2") # Go to Upper Set Point
+        self.magnet.write("R2") # Go to Upper Set Point
         time.sleep(self.SleepTimeMagnet)
-        self.magnet.instrument.write("P0")    #no pause
+        self.magnet.write("P0")    #no pause
         time.sleep(self.SleepTimeMagnet)
         while True:
-            self.magnet.instrument.write("G")    #ask for output parameters
+            self.magnet.write("G")    #ask for output parameters
             try:
-                real_current = float(self.magnet.instrument.read()[1:9])
+                real_current = float(self.magnet.read()[1:9])
                 log.info(f"real current {real_current}")
                 log.info(f"I_set {ISet}")
                 if abs(abs(real_current) - abs(round(ISet,3))) < 0.015 or (abs(abs(real_current) - abs(round(ISet,3))))/abs(ISet) < 0.001:
@@ -468,40 +475,40 @@ class WhiteCryoUvB(DeviceProcedure):
 
     def stabilizeB(self):
         while True:
-            if self.alive == False:
+            if self.should_stop():
                 break
-            self.magnet.instrument.write("K") # ask for status
-            rampingFinished = self.magnet.instrument.read()[3:4]
+            self.magnet.write("K") # ask for status
+            rampingFinished = self.magnet.read()[3:4]
             log.info(f"rampingFinished {rampingFinished}")
             if rampingFinished == "1":
                 time.sleep(0.5)
                 break
             time.sleep(self.SleepTimeMagnet)
-            self.magnet.instrument.write("G") # ask for output parameters
-            IMagnet = self.magnet.instrument.read()[1:9]
+            self.magnet.write("G") # ask for output parameters
+            IMagnet = self.magnet.read()[1:9]
             log.info(f"IMagnet: {IMagnet}")
             time.sleep(1)
-        self.magnet.instrument.write("P1") # pause
+        self.magnet.write("P1") # pause
 
     def shutdown(self):
         try:
             if self.keithley2600_connected:
-                self.keithley2600.instrument.close()
+                self.keithley2600.close()
             else:
                 log.error("Unable to shutdown Source Meter.")
 
             if self.ls340_connected:
-                self.ls340.instrument.close()
+                self.ls340.close()
             else:
                 log.error("Unable to shutdown ls340.")
 
             if self.agilent34420a_connected:
-                self.agilent34420a.instrument.close()
+                self.agilent34420a.close()
             else:
                 log.error("Unable to shutdown Agilent34420a.")
 
             if self.magnet_connected:
-                self.magnet.instrument.close()
+                self.magnet.close()
             else:
                 log.error("Unable to shutdown magnet.")
 

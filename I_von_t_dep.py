@@ -103,9 +103,7 @@ class I_von_t(DeviceProcedure):
     agilent34420a : Instrument # pymeasure support?
 
     keithley2600_connected = False
-    _data_to_measure = []
-    _delay = 0.01
-
+    agilent34420a_connected = False
     time_nvSwitch = 0.02
 
     def startup(self):
