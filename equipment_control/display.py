@@ -441,7 +441,7 @@ class DeviceControlWindow(QtWidgets.QWidget):
     def _probe_devices_internal(self):
         log = logging.getLogger()
         manager = make_resourcemanager(self.visa_manager.get_visa_path())
-        self.procedure_class._possible_devices = find_devices(manager=manager)
+        self.procedure_class._possible_devices = find_devices(manager=manager, multithreading=False)
         log.info("DeviceControlWindow:Finished searching for devices...")
         self._update_device_manager_widgets()
 
@@ -462,7 +462,7 @@ class DeviceControlWindow(QtWidgets.QWidget):
     
     def _reset_devices_internal(self):
         manager = make_resourcemanager(custom_visalib_path=self.visa_manager.get_visa_path())
-        reset_all_connected_devices(manager=manager)
+        reset_all_connected_devices(manager=manager, multithreading=False)
         log = logging.getLogger()
         log.info("DeviceControlWindow:Finished resetting devices...")
 

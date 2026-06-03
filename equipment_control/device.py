@@ -305,7 +305,7 @@ def valid_connector(descriptor:str, manager:pyvisa.ResourceManager) -> tuple[boo
             info = f"recognised as 'Serial' but can not be opened by VISA manager @ '{manager}', ensure the manager is correct or use a different VISA library"
     return valid, adapter_type, info
 
-def find_devices(manager:pyvisa.ResourceManager, excluded:list[str]=["ttyS"]) -> list[dict]:
+def find_devices(manager:pyvisa.ResourceManager, excluded:list[str]=["ttyS"], multithreading:bool=True) -> list[dict]:
     """Automatically searches for connected devices, i.e. probes all ports marked as valid by the `valid_connector` function.
 
     Args
@@ -314,6 +314,8 @@ def find_devices(manager:pyvisa.ResourceManager, excluded:list[str]=["ttyS"]) ->
             The manager to be used to find resources using `pyvisa`.
         excluded : list[str], optional
             List of strings that are excluded from the descriptor of any valid resource to speed up finding resources. Defaults to ["ttyS"].
+        multithreading : bool, optional
+            Use multithreading to analyse ports, can speed up the aquisition of possible_devices for independent ports. If two devices share the same bus multithreading can lead to undesired results and should not be used. Defaults to True.
     Returns
     -------
         possible_devices : list[dict]
@@ -348,30 +350,50 @@ def find_devices(manager:pyvisa.ResourceManager, excluded:list[str]=["ttyS"]) ->
 
     ### Open thread for every possible device
     thread_list = [None for _ in range(0,num_valid_resources)]
-    thread_return_data = dict()
-    for thread_index in range(0, num_valid_resources):
-        resource = valid_resources[thread_index]
-        
-        thread_return_data[str(thread_index)] = [None, False, None, "unknown error"]
-        thread = threading.Thread(target=analyse_port, args=(thread_return_data,thread_index,resource,manager))
-        thread.start()
-        thread_list[thread_index] = thread
-        
-    ### Wait until all threads are finished and read the data
-    for thread_index in range(0,num_valid_resources):
-        resource = valid_resources[thread_index]
-        if str(thread_index) in thread_return_data.keys():
-            thread_list[thread_index].join()
-            data, valid, _, info = thread_return_data[str(thread_index)]
+    ### Singlethreadding
+    if not multithreading:
+        return_data = dict()
+        for index in range(0, num_valid_resources):
+            resource = valid_resources[index]
+            analyse_port(return_data,index,resource,manager)
+            data, valid, _, info = return_data[str(index)]
+
             if valid:
                 if data is not None:
-                    log.info(f"find_devices:Thread {thread_index} opened '{resource}', connection is {info}: {data[IDENTIFICATION]}")
+                    log.info(f"find_devices:Opened '{resource}', connection is {info}: {data[IDENTIFICATION]}")
                     possible_devices.append(data)
                     log.debug(f"{resource}: {data}")
                 else:
-                    log.warning(f"find_devices:Thread {thread_index} could not find information about '{resource}' but connection is {info}. Might be a valid resource.")
+                    log.warning(f"find_devices:Thread {index} could not find information about '{resource}' but connection is {info}. Might be a valid resource.")
             else:
-                log.info(f"find_devices:Thread {thread_index} skipped '{resource}', connection is {info}")
+                log.info(f"find_devices:Thread {index} skipped '{resource}', connection is {info}")
+
+    ### Multithreading
+    else:
+        thread_return_data = dict()
+        for thread_index in range(0, num_valid_resources):
+            resource = valid_resources[thread_index]
+            
+            thread_return_data[str(thread_index)] = [None, False, None, "unknown error"]
+            thread = threading.Thread(target=analyse_port, args=(thread_return_data,thread_index,resource,manager))
+            thread.start()
+            thread_list[thread_index] = thread
+            
+        ### Wait until all threads are finished and read the data
+        for thread_index in range(0,num_valid_resources):
+            resource = valid_resources[thread_index]
+            if str(thread_index) in thread_return_data.keys():
+                thread_list[thread_index].join()
+                data, valid, _, info = thread_return_data[str(thread_index)]
+                if valid:
+                    if data is not None:
+                        log.info(f"find_devices:Thread {thread_index} opened '{resource}', connection is {info}: {data[IDENTIFICATION]}")
+                        possible_devices.append(data)
+                        log.debug(f"{resource}: {data}")
+                    else:
+                        log.warning(f"find_devices:Thread {thread_index} could not find information about '{resource}' but connection is {info}. Might be a valid resource.")
+                else:
+                    log.info(f"find_devices:Thread {thread_index} skipped '{resource}', connection is {info}")
 
     return possible_devices
 
@@ -441,11 +463,18 @@ def analyse_port(thread_return_data:dict, thread_index:int, resource:str, manage
         else:
             log.error(f"analyse_port: Thread {thread_index} could not open '{resource}'!")
 
-def reset_all_connected_devices(manager:pyvisa.ResourceManager) -> None:
+def reset_all_connected_devices(manager:pyvisa.ResourceManager, multithreading:bool=True) -> None:
     """Find and reset + clear all devices. Give crude information about the status of devices in the log. Can help if a device hangs and does not respond to commands properly.\n
     Might have to be executed multiple times.
+
+    Args
+    ------
+    manager : pyvisa.ResourceManager
+            The manager to be used to find resources using `pyvisa`.
+    multithreading : bool, optional
+        Use multithreading to analyse ports, can speed up the aquisition of possible_devices for independent ports. If two devices share the same bus multithreading can lead to undesired results and should not be used. Defaults to True.
     """
-    devices = find_devices(manager=manager)
+    devices = find_devices(manager=manager, multithreading=multithreading)
     for dev in devices:
         device = Device(descriptor=dev[DESCRIPTOR], manager=manager, adapter_type=dev[ADAPTER_TYPE],VISAAdapter_args=ADAPTER_COMMUNICATION[dev[DIALECT]][0])
         reset_command = ADAPTER_COMMUNICATION[dev[DIALECT]][2]
