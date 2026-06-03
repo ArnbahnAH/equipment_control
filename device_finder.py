@@ -34,6 +34,7 @@ from Nova_SEM_IV import NovaSEM_IV
 from Blue_Oxford_Kryo_control import BlueOxfordCryo_MagnetControl
 from I_von_t_dep import I_von_t
 from white_cryo_UvB import WhiteCryoUvB
+from white_cryo_UvT import WhiteCryoUvT
 
 ### Manage supported procedures
 class SupportedProcedure:
@@ -63,6 +64,7 @@ SupportedProcedureList : list = [
     SupportedProcedure(BlueOxfordCryo_MagnetControl, WindowSingleDock),
     SupportedProcedure(I_von_t, WindowSingleDock),
     SupportedProcedure(WhiteCryoUvB, WindowSingleDock),
+    SupportedProcedure(WhiteCryoUvT, WindowSingleDock),
 ]
 
 ### Procedure Manager

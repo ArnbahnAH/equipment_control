@@ -6,11 +6,11 @@ from pymeasure.adapters import VISAAdapter
 from pymeasure.experiment import Metadata, IntegerParameter, FloatParameter, Parameter, ListParameter, BooleanParameter
 from pymeasure.instruments.keithley import Keithley2600
 from pymeasure.instruments.agilent import Agilent34410A
+from pymeasure.instruments import Instrument
 
-from ..device import Device, make_resourcemanager
-from ..deviceprocedure import DeviceProcedure
-from ..export import export
-from ..windows import MultiDockArg, WindowMultiDock
+#from ..export import export
+#from ..windows import MultiDockArg, WindowMultiDock
+from equipment_control import WindowSingleDock, DeviceProcedure, Device, make_resourcemanager, DESCRIPTOR, ADAPTER_TYPE
 
 logging.basicConfig(
     level=logging.INFO,
@@ -34,32 +34,32 @@ _DATA_COLUMNS = [
 ]
 
 
-_multiDockargs = [
-   MultiDockArg(
-       name="U(B)-Kurve, Sourcemeter",
-       x_axis_label=_DATA_COLUMNS[0], # note this has to match with DATA_COLUMNS otherwise it breaks
-       y_axis_label=_DATA_COLUMNS[1],
-   ) ,
-   MultiDockArg(
-       name="T3(B)-Kurve, Temperaturstabilität",
-       x_axis_label=_DATA_COLUMNS[0],
-       y_axis_label=_DATA_COLUMNS[7],
-   ) ,
-   MultiDockArg(
-       name="U(B)-Kurve, Nanovoltmeter, Channel 1",
-       x_axis_label=_DATA_COLUMNS[0],
-       y_axis_label=_DATA_COLUMNS[3],
-   ) ,
-   MultiDockArg(
-       name="U(B)-Kurve, Nanovoltmeter, Channel 2",
-       x_axis_label=_DATA_COLUMNS[0],
-       y_axis_label=_DATA_COLUMNS[4],
-   ) ,
-]
-
-# TODO which keithley
-# temperature is contrlled externally this just reads it
-@export(inner=WindowMultiDock, multiarg=_multiDockargs)
+#_multiDockargs = [
+#   MultiDockArg(
+#       name="U(B)-Kurve, Sourcemeter",
+#       x_axis_label=_DATA_COLUMNS[0], # note this has to match with DATA_COLUMNS otherwise it breaks
+#       y_axis_label=_DATA_COLUMNS[1],
+#   ) ,
+#   MultiDockArg(
+#       name="T3(B)-Kurve, Temperaturstabilität",
+#       x_axis_label=_DATA_COLUMNS[0],
+#       y_axis_label=_DATA_COLUMNS[7],
+#   ) ,
+#   MultiDockArg(
+#       name="U(B)-Kurve, Nanovoltmeter, Channel 1",
+#       x_axis_label=_DATA_COLUMNS[0],
+#       y_axis_label=_DATA_COLUMNS[3],
+#   ) ,
+#   MultiDockArg(
+#       name="U(B)-Kurve, Nanovoltmeter, Channel 2",
+#       x_axis_label=_DATA_COLUMNS[0],
+#       y_axis_label=_DATA_COLUMNS[4],
+#   ) ,
+#]
+#
+## TODO which keithley
+## temperature is contrlled externally this just reads it
+#@export(inner=WindowMultiDock, multiarg=_multiDockargs)
 class WhiteCryoUvT(DeviceProcedure):
     """
     white cryo current driven temperature measurment. Temperature control has to be done by the controller this only reads it.
@@ -100,13 +100,13 @@ class WhiteCryoUvT(DeviceProcedure):
     DATA_COLUMNS = _DATA_COLUMNS
 
     #TODO which keithley is there? I think keithley2600
-    ls340 : Device
-    keithley2600 : Device # pymeasure support? maybe just use pure commands
-    agilent34420a : Device # pymeasure support?
+    ls340 : Instrument
+    keithley2600 : Instrument # pymeasure support? maybe just use pure commands
+    agilent34420a : Instrument # pymeasure support?
 
     keithley2600_connected = False
-    _data_to_measure = []
-    _delay = 0.01
+    ls340_connected = False
+    agilent34420a_connected = False
 
     time_nvSwitch = 0.02
 
@@ -121,26 +121,30 @@ class WhiteCryoUvT(DeviceProcedure):
 
             def make_instrument(index, cls):
                 """helper to connect instrument
-                index: the respective index of the provided devices.
+                index: the respective index of the self.provided_devices.
                 cls:the measurement class
                 """
                 info = self.provided_devices[index]
                 descriptor = info["Descriptor"]
                 adapter_type = info["Adapter Type"]
-                generic_instrument = Device(descriptor=descriptor,
-                                          manager=manager,
-                                          adapter_type=adapter_type)
-                connected = generic_instrument.successfully_connected
-                log.info(f"{cls} connected: {connected}")
-                device = generic_instrument
-                #device = cls(adapter=generic_instrument.adapter)
+                connected = False
+                try:
+                    generic_instrument = Device(descriptor=descriptor,
+                                            manager=manager,
+                                            adapter_type=adapter_type)
+                    connected = generic_instrument.successfully_connected
+                    log.info(f"{cls} connected: {connected}")
+                    device = cls(adapter=generic_instrument.adapter)
+                except Exception as e:
+                    print("Error:", e)
+                    device = None
                 return connected, device
 
-            self.ls340_connected, self.ls340 = make_instrument(0, Device)
-            self.keithley2600_connected, self.keithley2600 = make_instrument(1, Device)
+            self.ls340_connected, self.ls340 = make_instrument(0, Instrument)
+            self.keithley2600_connected, self.keithley2600 = make_instrument(1, Instrument)
             self.agilent34420a_connected = False
             if self.measurement_mode in ["Four", "Four+Ch2"]:
-                self.agilent34420a_connected, self.agilent34420a = make_instrument(2, Device)
+                self.agilent34420a_connected, self.agilent34420a = make_instrument(2, Instrument)
 
         else:
             log.error(f"No devices provided, shutting down!")
@@ -156,28 +160,28 @@ class WhiteCryoUvT(DeviceProcedure):
             probe_current = self.probe_current*1E-6 # A
             voltage_limit = self.voltage_limit_mV*1E-3  # V
 
-            self.keithley2600.instrument.write("smua.reset()")
-            self.keithley2600.instrument.write("smua.source.func = smua.OUTPUT_DCAMPS") # current mode
-            self.keithley2600.instrument.write("smua.source.leveli = 0.0")
-            self.keithley2600.instrument.write("smua.source.autorangei = smua.AUTORANGE_ON")
-            self.keithley2600.instrument.write(f"smua.source.limitv = {voltage_limit}")
-            self.keithley2600.instrument.write(f"smua.source.leveli = {probe_current}")
-            self.keithley2600.instrument.write("smua.measure.autorangev = smua.AUTORANGE_ON")
-            self.keithley2600.instrument.write(f"smua.measure.nplc = {self.nplc}")
-            self.keithley2600.instrument.write("display.smua.measure.func = display.MEASURE_DCVOLTS")
-            self.keithley2600.instrument.write("smua.source.output = smua.OUTPUT_OFF")
+            self.keithley2600.write("smua.reset()")
+            self.keithley2600.write("smua.source.func = smua.OUTPUT_DCAMPS") # current mode
+            self.keithley2600.write("smua.source.leveli = 0.0")
+            self.keithley2600.write("smua.source.autorangei = smua.AUTORANGE_ON")
+            self.keithley2600.write(f"smua.source.limitv = {voltage_limit}")
+            self.keithley2600.write(f"smua.source.leveli = {probe_current}")
+            self.keithley2600.write("smua.measure.autorangev = smua.AUTORANGE_ON")
+            self.keithley2600.write(f"smua.measure.nplc = {self.nplc}")
+            self.keithley2600.write("display.smua.measure.func = display.MEASURE_DCVOLTS")
+            self.keithley2600.write("smua.source.output = smua.OUTPUT_OFF")
 
             if self.sourcemeter_rs:
-                self.keithley2600.instrument.write("smua.sense = smua.SENSE_REMOTE")
+                self.keithley2600.write("smua.sense = smua.SENSE_REMOTE")
             else:
-                self.keithley2600.instrument.write("smua.sense = smua.SENSE_LOCAL")
+                self.keithley2600.write("smua.sense = smua.SENSE_LOCAL")
 
             if self.measurement_mode in ["Four", "Four+Ch2"]:
                 if self.agilent34420a_connected:
-                    self.agilent34420a.instrument.write('*RST')
-                    self.agilent34420a.instrument.write(":sense:function \"voltage\"")
-                    self.agilent34420a.instrument.write(":sense:voltage:RANGe:AUTO ON")
-                    self.agilent34420a.instrument.write(f":sense:voltage:NPLCycles {self.nplc}")
+                    self.agilent34420a.write('*RST')
+                    self.agilent34420a.write(":sense:function \"voltage\"")
+                    self.agilent34420a.write(":sense:voltage:RANGe:AUTO ON")
+                    self.agilent34420a.write(f":sense:voltage:NPLCycles {self.nplc}")
         else:
             if not self.keithley2600_connected:
                 log.error(f"Could not connect Keithley2600, shutting down ...")
@@ -198,20 +202,20 @@ class WhiteCryoUvT(DeviceProcedure):
             # TODO roland mixes try: expect: and read/ask why?
             #idn = self.keithley2600.ask("*IDN?")
             #assert(idn != "")
-            self.ls340.instrument.clear()
+            self.ls340.clear()
             def read_temp():
-                self.ls340.instrument.write("KRDG?A")
-                temp_1 = self.ls340.instrument.read().split("\r")[0]#TODO check this
-                self.ls340.instrument.write("KRDG?B")
-                temp_2 = self.ls340.instrument.read().split("\r")[0]#TODO check this
-                self.ls340.instrument.write("KRDG?C")
-                temp_3 = self.ls340.instrument.read().split("\r")[0]#TODO check this
+                self.ls340.write("KRDG?A")
+                temp_1 = self.ls340.read().split("\r")[0]#TODO check this
+                self.ls340.write("KRDG?B")
+                temp_2 = self.ls340.read().split("\r")[0]#TODO check this
+                self.ls340.write("KRDG?C")
+                temp_3 = self.ls340.read().split("\r")[0]#TODO check this
                 return temp_1, temp_2, temp_3
             temp_1, temp_2, temp_3 = read_temp()
             time_start = time.time()
             time_new = time.time()
             time.sleep(0.2)
-            self.keithley2600.instrument.write("smua.source.output = smua.OUTPUT_ON")
+            self.keithley2600.write("smua.source.output = smua.OUTPUT_ON")
             while not self.should_stop():
                 if self.should_stop():
                     break
@@ -220,47 +224,47 @@ class WhiteCryoUvT(DeviceProcedure):
                 time_new = time.time()
 
                 if self.measurement_mode in ["Four", "Four+Ch2"]:
-                    self.agilent34420a.instrument.write(":route:terminals front1")
-                self.keithley2600.instrument.write("ireading, vreading = smua.measure.iv()")
+                    self.agilent34420a.write(":route:terminals front1")
+                self.keithley2600.write("ireading, vreading = smua.measure.iv()")
                 if self.measurement_mode in ["Four", "Four+Ch2"]:
-                    self.agilent34420a.instrument.write(":initiate")
+                    self.agilent34420a.write(":initiate")
 
-                #self.ls340.instrument.clear()
+                #self.ls340.clear()
                 temp_1, temp_2, temp_3 = read_temp()
                 values_nvMeter_1 = None
                 values_nvMeter_2 = None
                 if self.measurement_mode in ["Four", "Four+Ch2"]:
-                    self.agilent34420a.instrument.write(":fetch?")
-                    values_nvMeter_1 = self.agilent34420a.instrument.read().rstrip()
+                    self.agilent34420a.write(":fetch?")
+                    values_nvMeter_1 = self.agilent34420a.read().rstrip()
                     if self.measurement_mode in ["Four+Ch2"]:
-                        self.agilent34420a.instrument.write(":route:terminals front2")
+                        self.agilent34420a.write(":route:terminals front2")
                         time.sleep(self.time_nvSwitch)
-                        self.agilent34420a.instrument.write(":read?")
-                        values_nvMeter_2 = self.agilent34420a.instrument.read().rstrip()
-                        self.agilent34420a.instrument.write(":route:terminals front1")
-                self.keithley2600.instrument.write("printnumber(vreading,ireading)")
-                values = self.keithley2600.instrument.read().rstrip().split(",")
+                        self.agilent34420a.write(":read?")
+                        values_nvMeter_2 = self.agilent34420a.read().rstrip()
+                        self.agilent34420a.write(":route:terminals front1")
+                self.keithley2600.write("printnumber(vreading,ireading)")
+                values = self.keithley2600.read().rstrip().split(",")
                 if self.remove_emf:
-                    #self.keithley2600.instrument.write("printnumber(vreading,ireading)")
-                    self.keithley2600.instrument.write(f"smua.source.leveli = {-1*probe_current}")
-                    self.keithley2600.instrument.write("ireading, vreading = smua.measure.iv()")
+                    #self.keithley2600.write("printnumber(vreading,ireading)")
+                    self.keithley2600.write(f"smua.source.leveli = {-1*probe_current}")
+                    self.keithley2600.write("ireading, vreading = smua.measure.iv()")
                     if self.measurement_mode in ["Four", "Four+Ch2"]:
-                        self.agilent34420a.instrument.write(":initiate")
+                        self.agilent34420a.write(":initiate")
                     if self.measurement_mode in ["Four", "Four+Ch2"]:
-                        self.agilent34420a.instrument.write(":fetch?")
-                        values_nvMeter_emf_1 = self.agilent34420a.instrument.read().rstrip()
+                        self.agilent34420a.write(":fetch?")
+                        values_nvMeter_emf_1 = self.agilent34420a.read().rstrip()
                         if self.measurement_mode in ["Four+Ch2"]:
-                            self.agilent34420a.instrument.write(":route:terminals front2")
+                            self.agilent34420a.write(":route:terminals front2")
                             time.sleep(self.time_nvSwitch)
-                            self.agilent34420a.instrument.write(":read?")
-                            values_nvMeter_emf_2 = self.agilent34420a.instrument.read().rstrip()
-                            self.agilent34420a.instrument.write(":route:terminals front1")
+                            self.agilent34420a.write(":read?")
+                            values_nvMeter_emf_2 = self.agilent34420a.read().rstrip()
+                            self.agilent34420a.write(":route:terminals front1")
                             values_nvMeter_2 = str((float(values_nvMeter_2)+(-1)*float(values_nvMeter_emf_2))/2.0)
                         values_nvMeter_1 = str((float(values_nvMeter_1)+(-1)*float(values_nvMeter_emf_1))/2.0)
 
-                    self.keithley2600.instrument.write("printnumber(vreading,ireading)")
-                    values_emf = self.keithley2600.instrument.read().rstrip().split(",")
-                    self.keithley2600.instrument.write(f"smua.source.leveli = {probe_current}")
+                    self.keithley2600.write("printnumber(vreading,ireading)")
+                    values_emf = self.keithley2600.read().rstrip().split(",")
+                    self.keithley2600.write(f"smua.source.leveli = {probe_current}")
                     values[0] = str((float(values[0])+(-1)*float(values_emf[0]))/2.0)
                     values[1] = str((float(values[1])+(-1)*float(values_emf[1]))/2.0)
                 dTdt = (float(temp_2) - float(temperature_old))/((time_new-time_old)/60.0)
@@ -280,26 +284,26 @@ class WhiteCryoUvT(DeviceProcedure):
                 #self.emit('progress', progress)
 
                 time.sleep(0.5)
-            self.keithley2600.instrument.write("smua.source.leveli = 0.0")
-            self.keithley2600.instrument.write("smua.source.output = smua.OUTPUT_OFF")
-            self.keithley2600.instrument.write("smua.source.offmode = smua.OUTPUT_HIGH_Z")
+            self.keithley2600.write("smua.source.leveli = 0.0")
+            self.keithley2600.write("smua.source.output = smua.OUTPUT_OFF")
+            self.keithley2600.write("smua.source.offmode = smua.OUTPUT_HIGH_Z")
 
         return
 
     def shutdown(self):
         try:
             if self.keithley2600_connected:
-                self.keithley2600.instrument.close()
+                self.keithley2600.close()
             else:
                 log.error("keithley2600_Measurement:Unable to shutdown Source Meter.")
 
             if self.ls340_connected:
-                self.ls340.instrument.close()
+                self.ls340.close()
             else:
                 log.error("ls340_Measurement:Unable to shutdown ls340.")
 
             if self.agilent34420a_connected:
-                self.agilent34420a.instrument.close()
+                self.agilent34420a.close()
             else:
                 log.error("agilent34420a_Measurement:Unable to shutdown Agilent34420a.")
 
