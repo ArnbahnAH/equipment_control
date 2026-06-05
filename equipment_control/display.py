@@ -198,12 +198,12 @@ class DeviceManagerWidget(QtWidgets.QWidget):
 
         # manual device selector
         manual_device_selection_layout.addWidget(QtWidgets.QLabel("M:"))
-        # self.manual_device_selection_widget.setFixedWidth(15)
+        self.manual_device_selection_widget.setFixedWidth(20)
         manual_device_selection_layout.addWidget(self.manual_device_selection_widget)
         manual_device_selection_layout.setContentsMargins(0, 4, 0, 0)
 
         adapter_type_layout.addWidget(QtWidgets.QLabel("Adapter:"))
-        # self.adapter_type_widget.setFixedWidth(65)
+        self.adapter_type_widget.setFixedWidth(75)
         adapter_type_layout.addWidget(self.adapter_type_widget)
         adapter_type_layout.setContentsMargins(0, 10, 0, 0)
 
