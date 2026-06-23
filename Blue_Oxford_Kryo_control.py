@@ -178,11 +178,11 @@ class BlueOxfordCryo_MagnetControl(DeviceProcedure):
         timeout_ms = min_timeout_ms + 3000
         
         device = Device(descriptor=descriptor, manager=manager,adapter_type=adapter_type, VISAAdapter_args={"timeout":timeout_ms})
-        self.metadata_devices_used = device.adapter.ask("*IDN?").strip()
         device.clear()
         
         self.keithley2600_connected = device.successfully_connected
         self.keithley2600 = Keithley2600(adapter=device.adapter)
+        self.metadata_devices_used = self.keithley2600.ask("*IDN?").strip()
 
         if self.keithley2600_connected:
             ### Initiate source meter
@@ -287,11 +287,11 @@ class BlueOxfordCryo_MagnetControl(DeviceProcedure):
         timeout_ms = min_timeout_ms + 3000
         
         device = Device(descriptor=descriptor, manager=manager, adapter_type=adapter_type, VISAAdapter_args={"timeout":timeout_ms})
-        self.metadata_devices_used += " + " + device.adapter.ask("*IDN?").strip()
         self.agilent34420A_clear = lambda : device.clear()
         
         self.agilent34420A_connected = device.successfully_connected
         self.agilent34420A = Instrument(device.adapter, name="Agilent 34420A Voltmeter")
+        self.metadata_devices_used += " + " + self.agilent34420A.ask("*IDN?").strip()
 
         if self.agilent34420A_connected:
             ### Initiate voltmeter
@@ -350,10 +350,10 @@ class BlueOxfordCryo_MagnetControl(DeviceProcedure):
             device = Device(descriptor=descriptor, manager=manager, adapter_type=adapter_type, VISAAdapter_args={"send_end" : True, "read_termination" : '\r', "write_termination" : '\r', "chunk_size" : 512,"timeout":3000})
             self.Itc503_clear = lambda : device.clear() # this is a non SCPI capable device, hence clearing the buffer requires a GPIB clear signal and not *CLS which depends on the adapter used, hence the implementation in the Device class
             self.Itc503_clear()
-            self.metadata_devices_used += " + " + device.adapter.ask("@0V").strip()
             
             self.itc503_connected = device.successfully_connected
             self.itc503 = ITC503(device.adapter,clear_buffer=False)
+            self.metadata_devices_used += " + " + self.itc503.ask("@0V").strip()
             self.itc503.control_mode = "RU"
     
     def _startup_magnet_power_supply(self, manager) -> None:
@@ -363,10 +363,10 @@ class BlueOxfordCryo_MagnetControl(DeviceProcedure):
             device = Device(descriptor=descriptor, manager=manager, adapter_type=adapter_type, VISAAdapter_args={"send_end" : True, "read_termination" : '\r', "write_termination" : '\r', "chunk_size" : 512,"timeout":5000})
             self.ips12010_clear = lambda : device.clear() # this is a non SCPI capable device, hence clearing the buffer requires a GPIB clear signal and not *CLS which depends on the adapter used, hence the implementation in the Device class
             self.ips12010_clear()
-            self.metadata_devices_used += " + " + device.adapter.ask("@0V").strip()
             
             self.ips12010_connected = device.successfully_connected
             self.ips12010 = IPS120_10(device.adapter,clear_buffer=False, field_range=(-14,14))
+            self.metadata_devices_used += " + " + self.ips12010.ask("@0V").strip()
             self.ips12010.control_mode = "RU"   #   remote operation
             #   self.ips12010.write("Q4")           #   extended range (no implemetation?)
             self.ips12010.activity = "hold"     #   set sweep mode to hold

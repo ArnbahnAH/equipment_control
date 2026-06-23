@@ -16,6 +16,7 @@ from typing import (Optional, LiteralString)
 from warnings import warn
 import pyvisa   # VISA adapters (GPIB)
 from pymeasure.adapters import VISAAdapter
+from pymeasure.instruments import Instrument
 from pymeasure.experiment import Procedure
 log = logging.getLogger()
 log.addHandler(logging.NullHandler())
@@ -437,7 +438,8 @@ def analyse_port(thread_return_data:dict, thread_index:int, resource:str, manage
                 log.warning(f"analyse_port:Device '{resource}' is recognised as {device_dialect} but no identification command is known for this dialect!")
             else:
                 try:
-                    identification = device.adapter.ask(identification_command).strip()
+                    instrument = Instrument(name=f"'{resource}' using '{identification_command}'",adapter=device.adapter)
+                    identification = instrument.ask(identification_command).strip()
                     found_right_dialect = True
                     thread_return_data[str(thread_index)][3] += f" and responds to {device_dialect} '{identification_command}'"
                 except:
