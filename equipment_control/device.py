@@ -488,7 +488,8 @@ def reset_all_connected_devices(manager:pyvisa.ResourceManager, multithreading:b
                 log.warning(f"reset_all_connected_devices:Device '{dev[DESCRIPTOR]}' is recognised as '{dev[DIALECT]}' but no reset command is known, can not reset device!")
             else:
                 log.info(f"reset_all_connected_devices:Resetting '{dev[DESCRIPTOR]}' with '{reset_command}'.")
-                device.adapter.write(reset_command)
+                instrument = Instrument(name=f"'{dev[DESCRIPTOR]}' using '{reset_command}'")
+                instrument.write(reset_command)
         except Exception as error:
             log.error(f"reset_all_connected_devices:Encountered an error with device '{dev[DESCRIPTOR]}': '{error}'")
 
