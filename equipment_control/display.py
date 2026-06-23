@@ -31,7 +31,7 @@ class VISAPathManagerWidget(QtWidgets.QWidget):
     ----------
     visa_path : str
         The VISA path input by the user. Defaults to '@py' if selected.
-    
+
     Methods
     ----------
     get_visa_path() -> str
@@ -48,7 +48,7 @@ class VISAPathManagerWidget(QtWidgets.QWidget):
         super().__init__(parent)
         self._setup_ui()
         self._layout()
-    
+
     def _setup_ui(self):
         ### Handle VISA input by user
         self.use_custom_visa_widget = QtWidgets.QCheckBox("Use custom VISA library", self)
@@ -59,7 +59,7 @@ class VISAPathManagerWidget(QtWidgets.QWidget):
         self.custom_visa_path_textbox = QtWidgets.QLineEdit(self)
         self.custom_visa_path_textbox.setText(str(self.visa_path))
         self.custom_visa_path_textbox.setToolTip("Path to the VISA library or a pyvisa recognised string. Default is '@py'.")
-        
+
     def _layout(self):
         vbox = QtWidgets.QVBoxLayout(self)
         # manual VISA selector
@@ -69,12 +69,12 @@ class VISAPathManagerWidget(QtWidgets.QWidget):
         vbox.addWidget(self.custom_visa_path_textbox)
         self.setSizePolicy(QtWidgets.QSizePolicy.Policy.Minimum,QtWidgets.QSizePolicy.Policy.Maximum)
         self._update_custom_visa_textbox()
-        
+
     # VISA path options
     def _change_use_custom_visa(self):
         self.use_custom_visa = not self.use_custom_visa
         self._update_custom_visa_textbox()
-    
+
     def _update_custom_visa_textbox(self):
         if self.use_custom_visa:
             self.custom_visa_path_textbox_label.show()
@@ -82,7 +82,7 @@ class VISAPathManagerWidget(QtWidgets.QWidget):
         else:
             self.custom_visa_path_textbox_label.hide()
             self.custom_visa_path_textbox.hide()
-    
+
     # Output of the VISAPathManagerWidget has to be called by the parent to take effect
     def get_visa_path(self) -> str:
         """Get the path to the VISA library.
@@ -95,7 +95,7 @@ class VISAPathManagerWidget(QtWidgets.QWidget):
             self.visa_path = self.custom_visa_path_textbox.text()
             visapath = self.visa_path
         return visapath
-              
+
 class DeviceManagerWidget(QtWidgets.QWidget):
     """A `PyQt5` widget to allow for selecting known devices using the `get_selected_device` function.
 
@@ -109,7 +109,7 @@ class DeviceManagerWidget(QtWidgets.QWidget):
         The selected adapter type, is always an element of `possible_adapter_types`. Defaults to "GPIB".
     possible_adapter_types : list[str]
         A list of possible adapter types for the user to select from.
-    
+
     Methods
     ---------
     get_selected_device() -> dict
@@ -128,7 +128,7 @@ class DeviceManagerWidget(QtWidgets.QWidget):
     # possible device options
     possible_adapter_types : list[str] = ["GPIB", "AR488", "RS232"]
     _possible_descriptors : list[str] = []
-    
+
     def __init__(self, parent, possible_devices : list[dict], default_information : dict|None = None):
         """A `PyQt5` widget to allow for selecting known devices using the `get_selected_device` function.
 
@@ -142,7 +142,7 @@ class DeviceManagerWidget(QtWidgets.QWidget):
         self.get_possible_devices(default_devices=default_information)
         self._setup_ui()
         self._layout()
-    
+
     # Get devices provided by parent class
     def get_possible_devices(self, default_devices : dict|None):
         for device in self.possible_devices:
@@ -150,16 +150,16 @@ class DeviceManagerWidget(QtWidgets.QWidget):
             descriptor = device[DESCRIPTOR]
             if descriptor not in self._possible_descriptors:
                 self._possible_descriptors.append(descriptor)
-                
+
         if default_devices is not None:
-            self.descriptor = default_devices[DESCRIPTOR]    
+            self.descriptor = default_devices[DESCRIPTOR]
             self.adapter_type = default_devices[ADAPTER_TYPE]
 
         if len(self.possible_devices) > 0:
             self.show_automatic_options = True
         else:
             self.show_automatic_options = False
-    
+
     # Define the GUI layout of this widget
     def _setup_ui(self):
         ### Handle device parameters
@@ -185,7 +185,7 @@ class DeviceManagerWidget(QtWidgets.QWidget):
         self.update_descriptors()
         self.automatic_descriptor_widget.activated.connect(self._get_descriptor_automatic)
         self.automatic_gpib_address_widget = QtWidgets.QComboBox()
-    
+
     def _layout(self):
         main_layout = QtWidgets.QVBoxLayout()
         self.manual_frame = QtWidgets.QFrame()
@@ -255,7 +255,7 @@ class DeviceManagerWidget(QtWidgets.QWidget):
                     if index in range(0,len(self._possible_descriptors)):
                         self.descriptor = self._possible_descriptors[index]
         self._update_selected_device_info()
-    
+
     def _get_adapter_type(self, index : int|None = None):
         if index is None and self.adapter_type_widget.count() > 0:
             self.adapter_type = self.possible_adapter_types[self.adapter_type_widget.currentIndex()]
@@ -264,7 +264,7 @@ class DeviceManagerWidget(QtWidgets.QWidget):
                 self.adapter_type = self.possible_adapter_types[index]
         self._get_descriptor_automatic()
         self._update_selected_device_info()
-    
+
     ### Updates
     def update_descriptors(self):
         for old_entry in self._possible_descriptors:
@@ -290,21 +290,21 @@ class DeviceManagerWidget(QtWidgets.QWidget):
                         possible_matches_descriptor.append(device_idx)
                     if self.adapter_type in device_info_item:
                         possible_matches_adapter.append(device_idx)
-            
+
             for match_idx in possible_matches_adapter:
                 if match_idx in possible_matches_descriptor:
                     ident = self.possible_devices[match_idx][IDENTIFICATION]
                     info_str = str(ident)
                     information_shown = info_str
             self.automatic_device_info_widget.setText(information_shown)
-                
+
     # Widget actions to update the layout
     def change_show_automatic_options(self):
         self.show_automatic_options = not self.manual_device_selection_widget.isChecked()
         self._update_manual_device_input_options()
         self._get_descriptor_automatic()
         self._update_selected_device_info()
-    
+
     def _update_manual_device_input_options(self):
         if self.show_automatic_options:
             self.show_automatic_options = True
@@ -316,7 +316,7 @@ class DeviceManagerWidget(QtWidgets.QWidget):
             self.manual_frame.show()
             self.automatic_frame.hide()
             self.automatic_device_info_widget.hide()
-    
+
     # Output of the DeviceManagerWidget has to be called by the parent to take effect
     def get_selected_device(self) -> dict:
         """Returns the selected device information in a dictionary.
@@ -329,7 +329,7 @@ class DeviceManagerWidget(QtWidgets.QWidget):
             self._get_descriptor_automatic(None)
         else:
             self._get_descriptor_manual()
-            
+
         return_dict = {
             DESCRIPTOR : self.descriptor,
             ADAPTER_TYPE : self.adapter_type,
@@ -352,7 +352,6 @@ class HelpWindow(QtWidgets.QWidget):
         else:
             textbox.setText(formated_text)
         layout.addWidget(textbox, 0, 0)
-    
 
 class DeviceControlWindow(QtWidgets.QWidget):
     """A window allowing for control of connected devices through a procedure.\n
@@ -392,15 +391,15 @@ class DeviceControlWindow(QtWidgets.QWidget):
             self.device_manager = []
             if hasattr(self.procedure_class, "default_devices") and len(self.procedure_class.default_devices)==len(self.procedure_class.requested_devices):
                 for requested_index in range(0,len(self.procedure_class.requested_devices)):
-                    self.device_manager.append(DeviceManagerWidget(parent=self, possible_devices=self.procedure_class._possible_devices, default_information=self.procedure_class.default_devices[requested_index]))  
+                    self.device_manager.append(DeviceManagerWidget(parent=self, possible_devices=self.procedure_class._possible_devices, default_information=self.procedure_class.default_devices[requested_index]))
             else:
                 log.debug("DeviceControlWindow:Procedure has not defined enough default devices.")
                 for requested_index in range(0,len(self.procedure_class.requested_devices)):
-                    self.device_manager.append(DeviceManagerWidget(parent=self, possible_devices=self.procedure_class._possible_devices))  
+                    self.device_manager.append(DeviceManagerWidget(parent=self, possible_devices=self.procedure_class._possible_devices))
         else:
             log.error(f"DeviceControlWindow:Procedure class {self.procedure_class.__name__} is not a valid DeviceProcedure, could not provide any devices, please ensure that the procedure class has attributes 'requested_devices', '_possible_devices' and 'provided_devices'!")
         ###
-    
+
     def _layout(self):
         #   Buttons to show a help window and for probing devices
         main_layout = QtWidgets.QVBoxLayout(self)
@@ -409,7 +408,7 @@ class DeviceControlWindow(QtWidgets.QWidget):
             info_probe_devices_hbox = QtWidgets.QHBoxLayout()
             info_probe_devices_hbox.setSpacing(10)
             info_probe_devices_hbox.setContentsMargins(-1, 6, 6, -1)
-            if self._provide_devices: 
+            if self._provide_devices:
                 info_probe_devices_hbox.addWidget(self.probe_device_button)
                 info_probe_devices_hbox.addWidget(self.reset_device_button)
                 info_probe_devices_hbox.addWidget(self.fast_search_button)
@@ -458,13 +457,13 @@ class DeviceControlWindow(QtWidgets.QWidget):
         log.info("DeviceControlWindow:Searching for devices...")
         finder_thread = threading.Thread(target=self._probe_devices_internal)
         finder_thread.start()
-    
+
     def _update_device_manager_widgets(self):
         for device_index in range(0, len(self.procedure_class.requested_devices)):
             self.device_manager[device_index].possible_devices = self.procedure_class._possible_devices
             self.device_manager[device_index].update_descriptors()
             self.device_manager[device_index].update()
-    
+
     def _reset_devices_internal(self):
         manager = make_resourcemanager(custom_visalib_path=self.visa_manager.get_visa_path())
         reset_all_connected_devices(manager=manager, multithreading=self.fast_search_button.isChecked())
@@ -484,7 +483,7 @@ class DeviceManagerWindow(ManagedWindowBase):
     Selected devices are passed to the `DeviceProcedure` upon calling the queue() function by starting a measurement with the `Procedure` startup() function.\n
     If `show_help=True` will show a button that opens a text-window displaying the doc-string of the selected `procedure_class`.\n
 
-    
+
     Attributes
     ----------
     procedure_class : DeviceProcedure
@@ -625,7 +624,7 @@ class DeviceManagerWindow(ManagedWindowBase):
 
     def _layout(self):
         self.main = QtWidgets.QWidget(self)
-        
+
         ### Added
         #   Buttons to show a help window and for probing devices
         if self._show_help and self.show_devices or self.show_devices or self._show_help:
@@ -633,7 +632,7 @@ class DeviceManagerWindow(ManagedWindowBase):
             info_probe_devices_hbox = QtWidgets.QHBoxLayout()
             info_probe_devices_hbox.setSpacing(10)
             info_probe_devices_hbox.setContentsMargins(-1, 6, 6, -1)
-            if self.show_devices: 
+            if self.show_devices:
                 info_probe_devices_hbox.addWidget(self.device_manager_button)
             if self._show_help:
                 info_probe_devices_hbox.addWidget(self.help_button)
@@ -715,7 +714,7 @@ class DeviceManagerWindow(ManagedWindowBase):
         self.setCentralWidget(self.main)
         self.main.show()
         self.resize(1600, 900)
-        
+
     def queue(self, procedure=None):
         ### Added
         if self.device_control_window._provide_devices:
@@ -727,7 +726,7 @@ class DeviceManagerWindow(ManagedWindowBase):
             self.procedure_class.provided_devices = provided_devices
             self.procedure_class.visa_path = self.device_control_window.visa_manager.get_visa_path()
         ###
-        
+
         # Check if the filename and the directory inputs are available
         if not self.enable_file_input:
             raise NotImplementedError("Queue method must be overwritten if the filename- and "
@@ -758,6 +757,33 @@ class DeviceManagerWindow(ManagedWindowBase):
 
         experiment = self.new_experiment(results)
         self.manager.queue(experiment)
+
+    def closeEvent(self, event):
+        experiment_is_running = self.manager.is_running()
+        number_of_experiments_in_queue = len(self.manager.experiments.queue)
+        
+        need_to_ask = False
+        if experiment_is_running:
+            message = "A measurement is currently running, do you want to close anyway and terminate the procedure?\nWARNING: Measurement will not shutdown properly!"
+            confirmation = QtWidgets.QMessageBox.question(self, f"Close {self.windowTitle()}?", message, QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
+            need_to_ask = True
+        elif number_of_experiments_in_queue > 0:
+            if number_of_experiments_in_queue == 1:
+                message = "There is currently 1 measurement queued, do you want to close anyway!"
+            else:
+                message = f"There are currently {number_of_experiments_in_queue} measurements queued, do you want to close anyway?"
+            confirmation = QtWidgets.QMessageBox.question(self, f"Close {self.windowTitle()}?", message, QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
+            need_to_ask = True
+
+        if need_to_ask:
+            if confirmation == QtWidgets.QMessageBox.Yes:
+                event.accept()
+                return super().closeEvent(event)
+            else:
+                event.ignore()
+        else:
+            event.accept()
+            return super().closeEvent(event)
 
     ### Own methods for actions on button pushes
     def make_tool_tip(self, parameter:IntegerParameter|FloatParameter|Parameter|ListParameter|BooleanParameter, information:str="") -> str:
@@ -796,9 +822,9 @@ class DeviceManagerWindow(ManagedWindowBase):
                     tool_tip += f" to '{_maximum}'{units}."
             except:
                 tool_tip += f" Range: '{minimum}'{units} to '{maximum}'{units}."
-            
+
         return tool_tip
-            
+
     def _open_help_window(self, event):
         if self._show_help:
             self.help_window.show()
