@@ -46,10 +46,6 @@ class AR488:
         Args:
             resource (pyvisa.resources.Resource): 
                 The `pyvisa` resource used for communication.
-            descriptor (str): 
-                The `pyvisa` descriptor.
-            manager (pyvisa.ResourceManager): 
-                The `pyvisa` resourcemanager used to retrieve the `descriptor` and establish connection.
             query_delay (float, optional): 
                 The default delay in seconds to wait for an answer from the device when calling the `self.query` function, uses the `delay` parameter in the `pyvisa` query function. Defaults to 0.01.
             buffer_delay (float, optional): 
@@ -1276,12 +1272,12 @@ class AR488Adapter(VISAAdapter):
         The AR488 class used for reading and writing data with `read` and `write`. Note some functionalities like reading/writing binary or bytes are not directly supported by the AR488 and thus use the standard `pymeasure` VISAAdapter implementation.
     """
     ar488 : AR488
-    default_termination : int|str|None = None
+    default_termination : int|str|None = "eoi"
     number_of_read_attempts : int = 1
     auto_mode : int = 0
     _last_command : str = ""
     _ar488_overwrite_visa_commands : list[str] = ["read_termination","write_termination","send_end"]    # commands that the pyvisa library cant set for a serial port but the AR488 can understand
-    def __init__(self, resource_name:str, visa_library:str='', auto_mode:int=0, default_termination : int|str|None = None, reading_attempts:int=2, log:logging.Logger=None, **kwargs):
+    def __init__(self, resource_name:str, visa_library:str='', auto_mode:int=0, default_termination : int|str|None = "eoi", reading_attempts:int=1, log:logging.Logger=None, **kwargs):
         """A wrappter of the `pymeasure` VISAAdapter class to work with an `AR488<https://sdfa3.org/david/ar488.html>`__ GPIB adapter.\n
         Automatically configures the AR488 to `auto 0` to mitigate "Query Untermianted" error and allows classes that inherit or use this adapter for reading data (e.g. the `ask` function) to automatically use the AR488 `++read` command. Furthermore the `ar488` attritute can be used to program the AR488.
         
@@ -1297,7 +1293,7 @@ class AR488Adapter(VISAAdapter):
             auto_mode (int):
                 1 / 0 to enable / disable auto forwarding, and 2 & 3 for "on-query" and "continuouse" mode, see `AR488.auto` or `++auto` documentation.
             default_termination (int | str | None):
-                Termination used by the AR488 `++read` function, can be "eoi" to read until the EOI signal, an ASCII character or its integer value where the value must be less than 256 or None to read until the timeout occurs. Will be defined when using `kwargs` to define "read_termination" or "send_end" but can be overwritten with this variable. Defaults to None.
+                Termination used by the AR488 `++read` function, can be "eoi" to read until the EOI signal, an ASCII character or its integer value where the value must be less than 256 or None to read until the timeout occurs. Will be defined when using `kwargs` to define "read_termination" but can be overwritten with this variable. Defaults to None.
             reading_attempts (int):
                 Number of attempts made to read data from the AR488, wait `timeout` inbetween attempts.
             log (logging.Logger):
@@ -1339,34 +1335,32 @@ class AR488Adapter(VISAAdapter):
         self.ar488 = AR488(resource=self.connection)
 
         for arg in kwargs.keys():
+            var = [kwargs[arg]].copy()[0]
             #   AR488 owned attributed
             if hasattr(self.ar488, arg):    
-                setattr(self.ar488, arg, [kwargs[arg]].copy()[0])
+                setattr(self.ar488, arg, var)
             #   VISA arguments that are not supported by a serial port but the AR488 can immitate
             elif arg == "read_termination":
                 self.ar488.End_Of_Termination = 1
-                self.ar488.End_Of_Termination_CHARacter = [kwargs[arg]].copy()[0]
-                self.default_termination = [kwargs[arg]].copy()[0]
+                self.ar488.End_Of_Termination_CHARacter = var
+                self.default_termination = var
             elif arg == "write_termination":
-                self.ar488.End_Of_Send = [kwargs[arg]].copy()[0]
+                self.ar488.End_Of_Send = var
             elif arg == "send_end":
-                self.ar488.End_Of_Interrupt = [kwargs[arg]].copy()[0]
-                self.default_termination = "eoi"
+                self.ar488.End_Of_Interrupt = var
             #   Arguments that a pyvisa serial port and the AR488 can understand
             elif arg == "timeout":
-                self.ar488.read_timeout = [kwargs[arg]].copy()[0]
-            elif arg == "query_delay":
-                self.ar488.query_delay = [kwargs[arg]].copy()[0]
+                self.ar488.read_timeout = var
+            elif arg == "query_delay" or arg == "wait_for":
+                self.ar488.query_delay = var
+            
 
         # bring AR488 into stable state and set it to controller mode with auto forewarding disabled to mitigate "Query Unterminated" errors
         if default_termination is not None and self.default_termination is None:
             self.default_termination = default_termination
-            if default_termination == "eoi":
-                self.ar488.End_Of_Interrupt = 1
-            else:
-                self.ar488.End_Of_Termination = 1
-                if ord(default_termination) != self.ar488.End_Of_Termination_CHARacter:
-                    self.ar488.End_Of_Termination_CHARacter = default_termination
+            self.ar488.End_Of_Termination = 1
+            if ord(default_termination) != self.ar488.End_Of_Termination_CHARacter:
+                self.ar488.End_Of_Termination_CHARacter = default_termination
 
         self.number_of_read_attempts = reading_attempts
         if auto_mode != 0:
@@ -1421,7 +1415,7 @@ class AR488Adapter(VISAAdapter):
                 if reading_attempt < self.number_of_read_attempts:
                     time.sleep(self.ar488.query_delay)
         if not successfull:
-            raise ValueError(f"AR488Adapter could not read from AR488 after {self.number_of_read_attempts} attempts!")
+            raise IOError(f"AR488Adapter could not read from AR488 after {self.number_of_read_attempts} attempts!")
         else:
             return answer
 
