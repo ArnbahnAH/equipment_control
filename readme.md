@@ -102,7 +102,7 @@ A class that allows for easier usage of an AR488 adapter. Most commands are impl
 A custom version of the pyvisa 'VISAAdapter' for the AR488 that behaves similarly to a GPIB or serial adapter with 'write' and 'read' being overwritten to allow for the usage of the AR488 in controller and device mode.</p>
 
 ### Known Issues
-- Oxford Instruments devices do not work on linux-gpib with pyvisa, at least with the scripts provided here! No issues with windows.
+- Oxford Instruments devices do not work on linux-gpib with PyVISA-py, a fix is available: https://github.com/pyvisa/pyvisa-py/pull/597 and being implemented into PyVISA-py. No issues with the NI drivers on windows.
 - PySide6 throws an error when closing a window that has an estimator widget, says that "QThread: Destroyed while thread 'Estimator-Thread (cant be closed properly with PySide6)' is still running". Is not an issue for measurements.
 - The pymeasure dock widget (and plot widget) implementation with qtgraph sometimes fails to render a measurement with a numpy error hinting at failing to convert a datapoint to a meaningful value, the entire application has to be restarted to solve this issue. This is purely a rendering problem and does not affect any running measurement, simply re-open the measurement when it is finished with a freshly started GUI. Parameters can then be re-applied for the next measurement.
 - OpenGL has issues on updating a pymeasure plot, also hinting at the painter, crashes on measurements. Can be avoided by not using OpenGL.

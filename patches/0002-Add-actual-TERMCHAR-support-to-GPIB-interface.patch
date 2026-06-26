@@ -1,0 +1,43 @@
+From 6481fa017ac03ecc00007adf030f46b316917501 Mon Sep 17 00:00:00 2001
+From: Dave Platt <dplatt@radagast.org>
+Date: Tue, 23 Jun 2026 16:33:46 -0700
+Subject: [PATCH 2/2] Add actual TERMCHAR support to GPIB interface
+
+Use the TERMCHAR and TERM_CHAR_EN attributes to configure the
+GPIB interface prior to each read.
+
+It would be possible to cache the results of the config settings,
+and only re-config when they change, but that would probably be
+excessive optimization since configuring the interface does
+not involve round-trips to the device.
+
+This allows the GPIB device class to be used with devices such as the
+HP 8903B which do not signal EOI at the end of input and must depend
+on termination-character matching by the interface.
+---
+ pyvisa_py/gpib.py | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/pyvisa_py/gpib.py b/pyvisa_py/gpib.py
+index 727c0c4..69965ae 100644
+--- a/pyvisa_py/gpib.py
++++ b/pyvisa_py/gpib.py
+@@ -467,6 +467,15 @@ class _GPIBCommon(Session):
+ 
+         reader = lambda: ifc.read(count)  # noqa: E731
+ 
++        if (self.attrs[ResourceAttribute.termchar] is None
++            or not self.attrs[ResourceAttribute.termchar_enabled]):
++            ifc.config(0x0C, 0)         # IbcEOSrd
++        else:
++            termchar = self.attrs[ResourceAttribute.termchar]
++            ifc.config(0x0F, termchar)  # IbcEOSchar
++            ifc.config(0x0E, 1)         # IbcEOScmp
++            ifc.config(0x0C, 1)         # IbcEOSrd
++
+         return self._read(reader, count, checker, False, None, False, gpib.GpibError)
+ 
+     def write(self, data: bytes) -> Tuple[int, StatusCode]:
+-- 
+2.47.3
+

@@ -1,6 +1,6 @@
 """A header file that overhauls the default `pymeasure` gui by adding control over devices and their adapters (GPIB / AR488 / RS232). Adds the `DeviceManagerWindow` as a replacement for the `pymeasure.display.windows.ManagedWindowBase`.
 """
-import logging, tempfile, threading
+import logging, tempfile, threading, datetime
 from pymeasure.experiment import (
     Results,
     unique_filename,
@@ -442,10 +442,9 @@ class DeviceControlWindow(QtWidgets.QWidget):
         self.setLayout(main_layout)
         self.setSizePolicy(QtWidgets.QSizePolicy.Policy.Minimum,QtWidgets.QSizePolicy.Policy.Maximum)
 
-    def _probe_devices_internal(self):
+    def _probe_devices_internal(self,manager):
         log = logging.getLogger()
-        manager = make_resourcemanager(self.visa_manager.get_visa_path())
-        self.procedure_class._possible_devices = find_devices(manager=manager, multithreading=self.fast_search_button.isChecked())
+        self.procedure_class._possible_devices = find_devices(manager=manager,multithreading=self.fast_search_button.isChecked())
         log.info("DeviceControlWindow:Finished searching for devices...")
         self._update_device_manager_widgets()
 
@@ -455,7 +454,8 @@ class DeviceControlWindow(QtWidgets.QWidget):
         """
         log = logging.getLogger()
         log.info("DeviceControlWindow:Searching for devices...")
-        finder_thread = threading.Thread(target=self._probe_devices_internal)
+        manager = make_resourcemanager(self.visa_manager.get_visa_path())
+        finder_thread = threading.Thread(target=self._probe_devices_internal,kwargs={"manager":manager})
         finder_thread.start()
 
     def _update_device_manager_widgets(self):
