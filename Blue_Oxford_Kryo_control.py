@@ -353,10 +353,9 @@ class BlueOxfordCryo_MagnetControl(DeviceProcedure):
             
             self.itc503_connected = device.successfully_connected
             self.itc503 = ITC503(device.adapter,clear_buffer=False)
-            self.Itc503_clear()
             self.itc503.adapter.write("@0V")
             time.sleep(0.1)
-            self.metadata_devices_used += " + " + self.itc503.read().strip()
+            self.metadata_devices_used += " + " + self.itc503.adapter.read().strip()
             self.Itc503_clear()
             self.itc503.control_mode = "RU"
             self.Itc503_clear()
@@ -371,13 +370,22 @@ class BlueOxfordCryo_MagnetControl(DeviceProcedure):
             
             self.ips12010_connected = device.successfully_connected
             self.ips12010 = IPS120_10(device.adapter,clear_buffer=False, field_range=(-14,14))
-            self.metadata_devices_used += " + " + self.ips12010.ask("@0V").strip()
+            self.ips12010_clear()
+            self.ips12010.adapter.write("@0V")
+            time.sleep(0.1)
+            self.metadata_devices_used += " + " + self.ips12010.adapter.read().strip()
+            self.ips12010_clear()
             self.ips12010.control_mode = "RU"   #   remote operation
             #   self.ips12010.write("Q4")           #   extended range (no implemetation?)
+            self.ips12010_clear()
             self.ips12010.activity = "hold"     #   set sweep mode to hold
+            self.ips12010_clear()
             self.ips12010.switch_heater_enabled = True
+            self.ips12010_clear()
             self.ips12010.sweep_rate = 0.9648   #   set sweep rate to 8 A/min, i.e. 0.9648  T/min
+            self.ips12010_clear()
             self.ips12010.enable_control()
+            self.ips12010_clear()
 
     def startup(self):
         ### Generate Metadata
