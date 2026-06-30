@@ -347,14 +347,19 @@ class BlueOxfordCryo_MagnetControl(DeviceProcedure):
             info = self.provided_devices[2]
             descriptor = info[DESCRIPTOR]
             adapter_type = info[ADAPTER_TYPE]
-            device = Device(descriptor=descriptor, manager=manager, adapter_type=adapter_type, VISAAdapter_args={"send_end" : True, "read_termination" : '\r', "write_termination" : '\r', "chunk_size" : 512,"timeout":3000})
+            device = Device(descriptor=descriptor, manager=manager, adapter_type=adapter_type, VISAAdapter_args={"send_end" : False, "query_delay" : 0.1, "read_termination" : '\r', "write_termination" : '\r', "chunk_size" : 512, "timeout":3000})
             self.Itc503_clear = lambda : device.clear() # this is a non SCPI capable device, hence clearing the buffer requires a GPIB clear signal and not *CLS which depends on the adapter used, hence the implementation in the Device class
             self.Itc503_clear()
             
             self.itc503_connected = device.successfully_connected
             self.itc503 = ITC503(device.adapter,clear_buffer=False)
-            self.metadata_devices_used += " + " + self.itc503.ask("@0V").strip()
+            self.Itc503_clear()
+            self.itc503.adapter.write("@0V")
+            time.sleep(0.1)
+            self.metadata_devices_used += " + " + self.itc503.read().strip()
+            self.Itc503_clear()
             self.itc503.control_mode = "RU"
+            self.Itc503_clear()
     
     def _startup_magnet_power_supply(self, manager) -> None:
             info = self.provided_devices[3]
@@ -487,7 +492,7 @@ class BlueOxfordCryo_MagnetControl(DeviceProcedure):
                 __temperature_3 = 0
                 num_tries = 0
                 valid = False
-                answer = "N.A."
+                answer = "no answer"
                 while not valid and num_tries < self._num_temperature_attempts and not self.should_stop():
                     self.Itc503_clear()
                     time.sleep(self.itc503_delay_s)
@@ -495,7 +500,7 @@ class BlueOxfordCryo_MagnetControl(DeviceProcedure):
                         answer = str(self.itc503.temperature_3)
                         if not "-" in answer:   #   Sometimes the separator '-' is returned instead of the full temperature, disregard those readings and request a new one as some digits are probably missing
                             __temperature_3 = float(answer)
-                            if __temperature_3 > 0 and len(list(answer)) > 3:
+                            if __temperature_3 > 0 and len(list(answer)) > 4:
                                 _temperature_3 = __temperature_3
                                 valid = True
                     except Exception as error:

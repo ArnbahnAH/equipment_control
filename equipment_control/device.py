@@ -35,7 +35,7 @@ DIALECT         = "Dialect"
 #   Structure: Dialect : (VISAAdapter arguments, identification command or None, reset command or "")
 ADAPTER_COMMUNICATION = {
     "SCPI"    :   ({},"*IDN?","*RST"),
-    "OXFORD"  : ({"send_end" : True, "query_delay" : 0.2, "read_termination" : '\r', "write_termination" : '\r', "chunk_size" : 512},"@0V",None),
+    "OXFORD"  : ({"send_end" : False, "query_delay" : 0.1, "read_termination" : '\r', "write_termination" : '\r', "chunk_size" : 512, "timeout":3000},"@0V",None),
 }   #   Keys: dialect, Value: Tuple(VISAAdapter_args of 'Device', string to be queried for getting information about the device)
 
 ### GPIB device base class for communication (handles AR488 & GPIB communication)
@@ -478,8 +478,12 @@ def reset_all_connected_devices(manager:pyvisa.ResourceManager, multithreading:b
     """
     devices = find_devices(manager=manager, multithreading=multithreading)
     for dev in devices:
-        device = Device(descriptor=dev[DESCRIPTOR], manager=manager, adapter_type=dev[ADAPTER_TYPE],VISAAdapter_args=ADAPTER_COMMUNICATION[dev[DIALECT]][0])
-        reset_command = ADAPTER_COMMUNICATION[dev[DIALECT]][2]
+        if dev[DIALECT] in ADAPTER_COMMUNICATION.keys():
+            device = Device(descriptor=dev[DESCRIPTOR], manager=manager, adapter_type=dev[ADAPTER_TYPE],VISAAdapter_args=ADAPTER_COMMUNICATION[dev[DIALECT]][0])
+            reset_command = ADAPTER_COMMUNICATION[dev[DIALECT]][2]
+        else:
+            device = Device(descriptor=dev[DESCRIPTOR], manager=manager, adapter_type=dev[ADAPTER_TYPE])
+            reset_command = None
         try:
             log.info(f"reset_all_connected_devices:Clearing '{dev[DESCRIPTOR]}'.")
             device.clear()
